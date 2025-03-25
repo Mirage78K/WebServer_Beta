@@ -51,7 +51,6 @@ ETH_HandleTypeDef heth;
 
 UART_HandleTypeDef huart1;
 
-osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -61,7 +60,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
 static void MX_USART1_UART_Init(void);
-void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -124,9 +122,6 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -312,23 +307,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE END 4 */
 
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
