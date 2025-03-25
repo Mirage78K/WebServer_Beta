@@ -23,7 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "Web_User.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
