@@ -9,7 +9,7 @@
 #include "Web_User.h"
 #include "cmsis_os.h"
 #include "mongoose.h"
-
+#include "DebugLog.h"
 
 
 #define ETH_PHY_ADDRESS						0
@@ -20,7 +20,7 @@
 
 
 /*extern variable*/
-extern UART_HandleTypeDef huart1;
+
 
 /*Global Variable*/
 TaskHandle_t WebServer_TaskHandler;
@@ -269,12 +269,12 @@ static void mylog(char ch, void *param)
 {
   static char buf[256];
   static uint16_t len = 0;
-  HAL_StatusTypeDef stat;
-
 
   buf[len++] = ch;
   if (ch == '\n' || len >= sizeof(buf)) {
-    stat = HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, 1000);
+    debugLog_printLogWithMutex(buf, len);
     len = 0;
   }
+
+  (void) param;
 }
