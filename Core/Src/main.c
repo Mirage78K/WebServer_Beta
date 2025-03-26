@@ -52,7 +52,7 @@ ETH_HandleTypeDef heth;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-
+extern TaskHandle_t WebServer_TaskHandler;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -102,7 +102,7 @@ int main(void)
   MX_ETH_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  webUser_initialBeforeTask();
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -125,6 +125,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 1024, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -289,7 +290,17 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(LAN_RESET_GPIO_Port, LAN_RESET_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : LAN_RESET_Pin */
+  GPIO_InitStruct.Pin = LAN_RESET_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(LAN_RESET_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : LED_BOARD_Pin */
   GPIO_InitStruct.Pin = LED_BOARD_Pin;
@@ -306,7 +317,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
 
 /**
   * @brief  Period elapsed callback in non blocking mode

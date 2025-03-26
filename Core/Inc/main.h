@@ -57,6 +57,8 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define LAN_RESET_Pin GPIO_PIN_0
+#define LAN_RESET_GPIO_Port GPIOC
 #define LED_BOARD_Pin GPIO_PIN_1
 #define LED_BOARD_GPIO_Port GPIOB
 

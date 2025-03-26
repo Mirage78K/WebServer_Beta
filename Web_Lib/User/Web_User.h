@@ -12,5 +12,27 @@
 #include "main.h"
 
 
+typedef struct
+{
+	struct
+	{
+		uint8_t macAddress[6];
+		uint8_t ipV4[4];
+		uint8_t maskV4[4];
+		uint8_t gwV4[4];
+	}Driver;
+}WebServerConfig_t;
+
+
+typedef struct
+{
+	WebServerConfig_t Config;
+}gWebServer_t;
+
+
+
+void webUser_initialBeforeTask();
+void webUser_taskHandler_webServer(void *arg);
+
 
 #endif /* USER_WEB_USER_H_ */
