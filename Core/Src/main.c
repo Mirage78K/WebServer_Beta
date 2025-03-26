@@ -102,6 +102,7 @@ int main(void)
   MX_ETH_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  HAL_UART_Transmit(&huart1, (uint8_t *)"Salam.", 6, 100);
   webUser_initialBeforeTask();
   /* USER CODE END 2 */
 

@@ -19,6 +19,9 @@
 
 
 
+/*extern variable*/
+extern UART_HandleTypeDef huart1;
+
 /*Global Variable*/
 TaskHandle_t WebServer_TaskHandler;
 
@@ -40,8 +43,9 @@ static void webServerCallBack(struct mg_connection *cn, int ev ,void *ev_data);
 static void userInit();
 static void thirdPartyInit();
 static void checkPhyHandle();
-static uint16_t readPhy(uint8_t addr, uint8_t reg);
 
+static uint16_t readPhy(uint8_t addr, uint8_t reg);
+static void mylog(char ch, void *param);
 
 
 
@@ -124,6 +128,7 @@ static void thirdPartyInit()
 	memset(&driver_data, 0, sizeof(driver_data));
 	memset(&mif, 0, sizeof(mif));
 
+	mg_log_set_fn(mylog, NULL);
 	mg_log_set(MG_LL_DEBUG);
 	mg_mgr_init(&mgr);
 
@@ -257,4 +262,19 @@ static uint16_t readPhy(uint8_t addr, uint8_t reg)	//copy from mongoose.c
   ETH->MACMIIAR |= MG_BIT(0);
   while (ETH->MACMIIAR & MG_BIT(0)) (void) 0;
   return ETH->MACMIIDR & 0xffff;
+}
+
+
+static void mylog(char ch, void *param)
+{
+  static char buf[256];
+  static uint16_t len = 0;
+  HAL_StatusTypeDef stat;
+
+
+  buf[len++] = ch;
+  if (ch == '\n' || len >= sizeof(buf)) {
+    stat = HAL_UART_Transmit(&huart1, (uint8_t *)buf, len, 1000);
+    len = 0;
+  }
 }
