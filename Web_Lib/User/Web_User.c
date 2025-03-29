@@ -68,10 +68,9 @@ void webServerCallBack(struct mg_connection *cn, int ev ,void *ev_data)
 {
 	if(ev == MG_EV_HTTP_MSG)
 	{
-	    // struct mg_http_message *hm = ev_data;  // Parsed HTTP request
-	    // struct mg_http_serve_opts opts = {.root_dir = "/web_root", .fs = &mg_fs_packed};
-		// mg_http_serve_dir(cn, hm, &opts);
-		mg_http_reply(cn, 200, NULL, "SALAM");
+	     struct mg_http_message *hm = ev_data;  // Parsed HTTP request
+	     struct mg_http_serve_opts opts = {.root_dir = "/web_root", .fs = &mg_fs_packed};
+		 mg_http_serve_dir(cn, hm, &opts);
 	}
 }
 
