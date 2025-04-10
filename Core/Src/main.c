@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "DebugLog.h"
 #include "Web_User.h"
+#include "FreeRTOSConfig.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +54,11 @@ ETH_HandleTypeDef heth;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
+#if( configAPPLICATION_ALLOCATED_HEAP == 1 )
+uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".ccmram")));
+#endif
+
+
 extern TaskHandle_t WebServer_TaskHandler;
 /* USER CODE END PV */
 
