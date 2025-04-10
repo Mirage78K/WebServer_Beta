@@ -60,6 +60,7 @@ uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".ccmram")));
 
 
 extern TaskHandle_t WebServer_TaskHandler;
+extern TaskHandle_t hmiConn_TaskHandler;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -135,6 +136,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 1024, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
+  xTaskCreate(hmiConn_TaskHandler, "HMI Connection", 128, NULL, tskIDLE_PRIORITY, &hmiConn_TaskHandler);
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
