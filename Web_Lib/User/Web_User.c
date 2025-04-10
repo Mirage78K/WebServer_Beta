@@ -9,6 +9,7 @@
 #include "Web_User.h"
 #include "cmsis_os.h"
 #include "mongoose.h"
+#include "mongoose_glue.h"
 #include "DebugLog.h"
 
 
@@ -18,6 +19,17 @@
 #define LAN8720_SYMBOLERRORCOUNTER_REG		0x1AU
 
 
+
+
+
+static void ws_200(struct mg_connection *c) {
+  mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %lu}", MG_ESC("uvol"), HAL_GetTick());
+}
+
+
+
+extern void http_ev_handler(struct mg_connection *c, int ev, void *ev_data);
+extern void send_websocket_data(void);
 
 /*extern variable*/
 
@@ -31,14 +43,12 @@ gWebServer_t gWebServer;
 
 
 //third pary
-struct mg_mgr mgr;
+extern struct mg_mgr g_mgr;
 struct mg_tcpip_if mif;
 struct mg_tcpip_driver_stm32f_data driver_data;
 
 
 
-
-static void webServerCallBack(struct mg_connection *cn, int ev ,void *ev_data);
 
 static void userInit();
 static void thirdPartyInit();
@@ -58,19 +68,8 @@ void webUser_taskHandler_webServer(void *arg)
 	while(1)
 	{
 		checkPhyHandle();
-		mg_mgr_poll(&mgr, 100);
-	}
-}
-
-
-
-void webServerCallBack(struct mg_connection *cn, int ev ,void *ev_data)
-{
-	if(ev == MG_EV_HTTP_MSG)
-	{
-	     struct mg_http_message *hm = ev_data;  // Parsed HTTP request
-	     struct mg_http_serve_opts opts = {.root_dir = "/web_root", .fs = &mg_fs_packed};
-		 mg_http_serve_dir(cn, hm, &opts);
+		mg_mgr_poll(&g_mgr, 100);
+		send_websocket_data();
 	}
 }
 
@@ -129,7 +128,7 @@ static void thirdPartyInit()
 
 	mg_log_set_fn(mylog, NULL);
 	mg_log_set(MG_LL_DEBUG);
-	mg_mgr_init(&mgr);
+	mg_mgr_init(&g_mgr);
 
 
 	driver_data.mdc_cr = 4;
@@ -163,11 +162,13 @@ static void thirdPartyInit()
 	mif.mac[5] = gWebServer.Config.Driver.macAddress[5];
 
 	NVIC_EnableIRQ(ETH_IRQn);
-    mg_tcpip_init(&mgr, &mif);
-
+    mg_tcpip_init(&g_mgr, &mif);
 
     //Initial HTTP App
-    mg_http_listen(&mgr, "http://0.0.0.0:80", webServerCallBack, NULL);
+    mg_http_listen(&g_mgr, "http://0.0.0.0:80", http_ev_handler, NULL);
+
+    //Web Socket
+    mongoose_add_ws_handler(1000, ws_200);
 }
 
 
