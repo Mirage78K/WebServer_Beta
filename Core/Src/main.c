@@ -23,6 +23,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "DebugLog.h"
 #include "Web_User.h"
 /* USER CODE END Includes */
 
@@ -102,7 +103,8 @@ int main(void)
   MX_ETH_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  HAL_UART_Transmit(&huart1, (uint8_t *)"Salam.", 6, 100);
+  debugLog_initBeforeTask();
+
   webUser_initialBeforeTask();
   /* USER CODE END 2 */
 
