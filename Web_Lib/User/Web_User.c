@@ -22,9 +22,6 @@
 
 
 
-static void ws_200(struct mg_connection *c) {
-  mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %lu}", MG_ESC("uvol"), HAL_GetTick());
-}
 
 
 
@@ -48,6 +45,9 @@ struct mg_tcpip_if mif;
 struct mg_tcpip_driver_stm32f_data driver_data;
 
 
+//websocket
+static void ws_200(struct mg_connection *c);
+
 
 
 static void userInit();
@@ -67,12 +67,13 @@ void webUser_taskHandler_webServer(void *arg)
 
 	while(1)
 	{
+
+		//Thirdparty
 		checkPhyHandle();
 		mg_mgr_poll(&g_mgr, 100);
 		send_websocket_data();
 	}
 }
-
 
 
 void webUser_initialBeforeTask()
@@ -84,12 +85,6 @@ void webUser_initialBeforeTask()
 	//create queue
 
 	//create task
-}
-
-
-void webUser_taskPoll()
-{
-
 }
 
 
@@ -118,6 +113,23 @@ static void userInit()
 	gWebServer.Config.Driver.gwV4[3] = 1;
 }
 
+
+
+/*Websocket handle functions*/
+static void ws_200(struct mg_connection *c)
+{
+	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %lu}", MG_ESC("uvol"), HAL_GetTick());
+}
+
+
+
+/*add thirdparty function*/
+int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data)		//if return == 0 then countinue
+{
+	//Nothing
+
+	return 0;
+}
 
 //fisrt call userInit then call this function
 static void thirdPartyInit()
@@ -168,7 +180,7 @@ static void thirdPartyInit()
     mg_http_listen(&g_mgr, "http://0.0.0.0:80", http_ev_handler, NULL);
 
     //Web Socket
-    mongoose_add_ws_handler(1000, ws_200);
+    mongoose_add_ws_handler(200, ws_200);
 }
 
 

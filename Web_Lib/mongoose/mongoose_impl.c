@@ -5,6 +5,9 @@
 #include "mongoose.h"
 #include "mongoose_glue.h"
 
+/*Add by Mojtaba*/
+#include "Web_User.h"
+
 #if MG_ARCH == MG_ARCH_UNIX || MG_ARCH == MG_ARCH_WIN32
 #define HTTP_URL "http://0.0.0.0:8080"
 #define HTTPS_URL "https://0.0.0.0:8443"
@@ -484,6 +487,11 @@ void glue_update_state(void) {
 
 // Mongoose event handler function, gets called by the mg_mgr_poll()
 void http_ev_handler(struct mg_connection *c, int ev, void *ev_data) {
+  if(webUser_myFuncInHttpHandler(c, ev, ev_data) != 0)
+  {
+    return;
+  }
+
   if (ev == MG_EV_HTTP_HDRS && c->data[0] == 0) {
 #if WIZARD_ENABLE_HTTP_UI_LOGIN
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;

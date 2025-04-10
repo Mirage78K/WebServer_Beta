@@ -10,7 +10,7 @@
 
 
 #include "main.h"
-
+#include "mongoose.h"
 
 typedef struct
 {
@@ -33,6 +33,10 @@ typedef struct
 
 void webUser_initialBeforeTask();
 void webUser_taskHandler_webServer(void *arg);
+
+
+/*add in thirdparty*/
+int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data);
 
 
 #endif /* USER_WEB_USER_H_ */
