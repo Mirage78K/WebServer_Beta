@@ -10,10 +10,46 @@
 
 
 #include "main.h"
+#include "WebServer_Conn_Param.h"
 
 
 
-void webUser_hmiConn_taskHandler(void *arg);
+//All Modules can use this Structure
+struct ParamFromHmi_Data_t
+{
+	WsConn_Param_Data_Flow_t AllDataFlow;
+    WsConn_Param_Data_ClockAndData_t ClockAndData;
+};
+
+struct ParamFromHmi_Setting_t
+{
+    uint8_t dummy;
+};
+
+struct PramFromHmi_StateFlags_t
+{
+    uint8_t paramReady;
+};
+
+
+typedef struct
+{
+
+    struct ParamFromHmi_Data_t Data;
+    struct ParamFromHmi_Setting_t Setting;
+    struct PramFromHmi_StateFlags_t StateFlag;
+    
+}gParamFromHmi_t;
+
+
+
+
+void hmiConn_taskHandler_connection(void *arg);
+
+
+
+//we can use getter but do not change datas
+int hmiConn_GetAllParam(gParamFromHmi_t *AllParam);
 
 
 #endif /* HMI_CONNEXTION_H_ */
