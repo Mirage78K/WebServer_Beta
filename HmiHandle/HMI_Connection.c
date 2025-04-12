@@ -13,6 +13,17 @@
 
 
 
+typedef enum
+{
+    HMI_REC_PACKET_STATE_OK,
+    HMI_REC_PACKET_STATE_HEADER_FOOTER_ERR,
+    HMI_REC_PACKET_STATE_CRC_ERR,
+    HMI_REC_PACKET_STATE_VERSION_ERR,
+    HMI_REC_PACKET_STATE_CMD_ERR,
+}Hmi_ReceivePacket_State_t;
+
+
+
 typedef struct
 {
     struct
@@ -23,11 +34,13 @@ typedef struct
 
     struct
     {
-        uint8_t dataReceiveBuffer[HMICONN_MAX_PACKET_RECEIVE_LENGH];
+        uint8_t packetReceiveBuffer[HMICONN_MAX_PACKET_RECEIVE_LENGH];
         uint8_t dataSendBuffer[HMICONN_PACKET_SEND_LENGTH];
         WsConn_SendDataFromHmi_All_t HmiRecvData;
         WsConn_SendSettingFromHmi_All_t HmiRecvSetting;
-        uint16_t recvDataSize;
+        uint16_t recvPacketSize;
+
+        Hmi_ReceivePacket_State_t packetRecvSatate;
     }HmiHandle;
     
     
@@ -55,7 +68,10 @@ HmiConnLocal_t HmiConnLocal;
 
 /*Local Function Prototype*/
 static void getDataFromHmiRs232Poll();
-
+static int analyzeAndGetDataFromHmi();
+static int analyzeAndGetSettingFromHmi();
+static void preparePacketSendToHmi();
+static int checkPacketFromHmiVersion(WsConn_SendPacketFromHmiCmd_e cmdType);
 static uint8_t calChecksum(const uint8_t *data,uint16_t dataSize);
 
 
@@ -73,7 +89,7 @@ void hmiConn_taskHandler_connection(void *arg)
 
     vTaskDelay(pdMS_TO_TICKS(500));    //Wait to System Startup TODO (must be 8000ms)
 
-    HAL_UARTEx_ReceiveToIdle_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.dataReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.dataReceiveBuffer));
+    HAL_UARTEx_ReceiveToIdle_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
 
     while(1)
     {
@@ -100,7 +116,7 @@ int hmiConn_GetAllParam(gParamFromHmi_t *AllParam)
 
 void hmiConn_UartExRxDmaISR(uint16_t size)
 {
-    HmiConnLocal.HmiHandle.recvDataSize = size;
+    HmiConnLocal.HmiHandle.recvPacketSize = size;
     xSemaphoreGiveFromISR(HmiConnLocal.RtosApi.SemaHmiDmaRx, NULL);
 }
 
@@ -110,37 +126,149 @@ static void getDataFromHmiRs232Poll()
 {
     /**
      * 1- wait for get Data from HMI
-     * 2- active dma receive
      * 3- check header and footer
      * 4- check crc
-     * 5- check version
-     * 6- check data or setting cmd
+     * 5- check cmd
+     * 6- check version
      * 7- send Ack
      * 8- copy To gParamFromHmi
      * 9- set ready param flag
+     * 9- clear buffers if you want
+     * 2- active dma receive
     */
 
     uint8_t crcValue;
+    int res;
 
     if(xSemaphoreTake(HmiConnLocal.RtosApi.SemaHmiDmaRx, pdMS_TO_TICKS(5000)) == pdTRUE)    //Use time out if you want
     {
-        HAL_UARTEx_ReceiveToIdle_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.dataReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.dataReceiveBuffer));
 
-        if((HmiConnLocal.HmiHandle.dataReceiveBuffer[0] == WS_HMI_TRANSFER_HEADER_BYTE_LOW) &&
-            (HmiConnLocal.HmiHandle.dataReceiveBuffer[1] == WS_HMI_TRANSFER_HEADER_BYTE_LOW) &&
-                HmiConnLocal.HmiHandle.dataReceiveBuffer[HmiConnLocal.HmiHandle.recvDataSize - (2 + HMICONN_CRC_SIZE)] == WS_HMI_TRANSFER_FOOTER_BYTE_LOW &&
-                    HmiConnLocal.HmiHandle.dataReceiveBuffer[HmiConnLocal.HmiHandle.recvDataSize - (1 + HMICONN_CRC_SIZE)] == WS_HMI_TRANSFER_FOOTER_BYTE_HIGH)
+        if((HmiConnLocal.HmiHandle.packetReceiveBuffer[0] == WS_HMI_TRANSFER_HEADER_BYTE_LOW) &&
+            (HmiConnLocal.HmiHandle.packetReceiveBuffer[1] == WS_HMI_TRANSFER_HEADER_BYTE_HIGH))
         {
-            crcValue = calChecksum(HmiConnLocal.HmiHandle.dataReceiveBuffer, (HmiConnLocal.HmiHandle.recvDataSize - 1));   //-1 because remove CRC
+            crcValue = calChecksum(HmiConnLocal.HmiHandle.packetReceiveBuffer, (HmiConnLocal.HmiHandle.recvPacketSize - 1));   //-1 because remove CRC
             
-            if(crcValue == HmiConnLocal.HmiHandle.dataReceiveBuffer[HmiConnLocal.HmiHandle.recvDataSize - 1])
+            if(crcValue == HmiConnLocal.HmiHandle.packetReceiveBuffer[HmiConnLocal.HmiHandle.recvPacketSize - 1])
             {
                 HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
+                
+                WsConn_PacketSend_Header_t HeaderPacket;
+                memcpy(&HeaderPacket, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(WsConn_PacketSend_Header_t));
+
+                switch (HeaderPacket.respCmd)
+                {
+                case WS_CONN_PACKETCMD_HMI_DATA:
+                    res = analyzeAndGetDataFromHmi();
+                    if(res == 0)
+                    {
+                        HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_OK;
+                    }
+                    else if(res == 1)
+                    {
+                        HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_HEADER_FOOTER_ERR;
+                    }
+                    else if(res == 2)
+                    {
+                        HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_VERSION_ERR;
+                    }
+                    break;
+
+                case WS_CONN_PACKETCMD_HMI_SETTING:
+                    res = analyzeAndGetSettingFromHmi();
+                    if(res == 0)
+                    {
+                        HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_OK;
+                    }
+                    else if(res == 1)
+                    {
+                        HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_HEADER_FOOTER_ERR;
+                    }
+                    else if(res == 2)
+                    {
+                        HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_VERSION_ERR;
+                    }
+                    break;
+                
+                default:
+                    HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_CMD_ERR;
+                    break;
+                }
+
+                gParamFromHmi.StateFlag.paramReady = 1;
+                preparePacketSendToHmi();
+            }
+            else
+            {
+                HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_CRC_ERR;
             }
         }
+        else
+        {
+            HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_HEADER_FOOTER_ERR;
+        }
 
-        //clear buffer if you want
+        //TODO clear buffer if you want
+
+
+        HAL_UARTEx_ReceiveToIdle_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
     }
+}
+
+
+static int analyzeAndGetDataFromHmi()     //out = 0(OK), 1(header or footer error), 2(version error)
+{
+    memcpy(&HmiConnLocal.HmiHandle.HmiRecvData, HmiConnLocal.HmiHandle.packetReceiveBuffer, HmiConnLocal.HmiHandle.recvPacketSize - 1);    //-1 for crc
+    
+    if((HmiConnLocal.HmiHandle.HmiRecvData.HeaderSt.header != WS_HMI_TRANSFER_HEADER) || (HmiConnLocal.HmiHandle.HmiRecvData.footer != WS_HMI_TRANSFER_FOOTER))
+    {
+        return 1;
+    }
+    else if(checkPacketFromHmiVersion(WS_CONN_PACKETCMD_WS_DATA) != 0)
+    {
+        return 2;
+    }
+
+    //check range (if needed)
+
+    //Get Data
+    memcpy(&gParamFromHmi.Data.AllDataFlow, &HmiConnLocal.HmiHandle.HmiRecvData.AllDataFlow, sizeof(gParamFromHmi.Data.AllDataFlow));
+    memcpy(&gParamFromHmi.Data.ClockAndData, &HmiConnLocal.HmiHandle.HmiRecvData.ClockAndData, sizeof(gParamFromHmi.Data.ClockAndData));
+
+    return 0;
+}
+
+
+static int analyzeAndGetSettingFromHmi()  //out = 0(OK), 1(header or footer error), 2(version error)
+{
+    memcpy(&HmiConnLocal.HmiHandle.HmiRecvSetting, HmiConnLocal.HmiHandle.packetReceiveBuffer, HmiConnLocal.HmiHandle.recvPacketSize - 1);    //-1 for crc
+    
+    if((HmiConnLocal.HmiHandle.HmiRecvSetting.HeaderSt.header != WS_HMI_TRANSFER_HEADER) || (HmiConnLocal.HmiHandle.HmiRecvSetting.footer != WS_HMI_TRANSFER_FOOTER))
+    {
+        return 1;
+    }
+    else if(checkPacketFromHmiVersion(WS_CONN_PACKETCMD_WS_SETTING) != 0)
+    {
+        return 2;
+    }
+
+    //check range (if needed)
+
+    //Get Data
+    //Nothing yet
+
+    return 0;
+}
+
+
+static void preparePacketSendToHmi()
+{
+    NULL;
+}
+
+
+static int checkPacketFromHmiVersion(WsConn_SendPacketFromHmiCmd_e cmdType)
+{
+    return 0;
 }
 
 

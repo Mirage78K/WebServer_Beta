@@ -143,7 +143,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 1024, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
-  xTaskCreate(hmiConn_taskHandler_connection, "HMI Connection", 128, NULL, tskIDLE_PRIORITY, &hmiConn_TaskHandle);
+  xTaskCreate(hmiConn_taskHandler_connection, "HMI Connection", 256, NULL, tskIDLE_PRIORITY, &hmiConn_TaskHandle);
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
