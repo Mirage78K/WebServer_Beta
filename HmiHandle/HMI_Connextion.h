@@ -14,6 +14,15 @@
 
 
 
+#define HMICONN_UART_HANDLER		                    huart1
+
+#define HMICONN_CRC_SIZE                                1       //CRC is last byte in buffer
+
+#define HMICONN_MAX_PACKET_RECEIVE_LENGH                3072        //Max Packet Receive
+#define HMICONN_PACKET_SEND_LENGTH                      (sizeof(WsConn_SendFromWebSrv_All_t) + HMICONN_CRC_SIZE)
+
+
+
 //All Modules can use this Structure
 struct ParamFromHmi_Data_t
 {
@@ -45,11 +54,14 @@ typedef struct
 
 
 void hmiConn_taskHandler_connection(void *arg);
+void hmiConn_initialBeforeTask();
 
-
+//ISR
+void hmiConn_UartExRxDmaISR(uint16_t size);
 
 //we can use getter but do not change datas
 int hmiConn_GetAllParam(gParamFromHmi_t *AllParam);
+
 
 
 #endif /* HMI_CONNEXTION_H_ */

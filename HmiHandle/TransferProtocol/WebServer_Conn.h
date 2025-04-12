@@ -6,7 +6,7 @@
  */
 
 
-/**Just Use in HMI_Connection File**/
+/**Just Use in HMI_Connection.c File**/
 
 #ifndef TRANSFERPROTOCOL_WEBSERVER_CONN_H_
 #define TRANSFERPROTOCOL_WEBSERVER_CONN_H_
@@ -15,6 +15,16 @@
 #include "main.h"
 #include <stdint.h>
 #include "WebServer_Conn_Param.h"
+
+
+#define WS_HMI_TRANSFER_HEADER                  0xA4B8
+#define WS_HMI_TRANSFER_HEADER_BYTE_LOW         0xB8
+#define WS_HMI_TRANSFER_HEADER_BYTE_HIGH        0xA4
+
+#define WS_HMI_TRANSFER_FOOTER                  0xC4D2
+#define WS_HMI_TRANSFER_FOOTER_BYTE_LOW         0xD2
+#define WS_HMI_TRANSFER_FOOTER_BYTE_HIGH        0xC4
+
 
 
 typedef enum
@@ -31,23 +41,14 @@ typedef enum
 
 
 
-/*header and footer*/
+/*header*/
 typedef struct
 {
-    uint32_t header;
+    uint16_t header;
     uint16_t packetLength;
     WsConn_SendPacketFromHmiCmd_e respCmd;
     uint8_t version;
 }WsConn_PacketSend_Header_t;
-
-
-typedef struct
-{
-    uint8_t checksum;
-    uint32_t footer;
-}WsConn_PacketSend_Footer_t;
-
-
 
 
 
@@ -62,11 +63,11 @@ typedef struct
 
 typedef struct
 {
-    WsConn_PacketSend_Header_t Header;
+    WsConn_PacketSend_Header_t HeaderSt;
     WsConn_SendFromWebSrv_State_t statePacket;
 
 
-    WsConn_PacketSend_Footer_t Footer;
+    uint16_t footer;
 }WsConn_SendFromWebSrv_All_t;
 
 
@@ -83,13 +84,13 @@ typedef struct
 
 typedef struct
 {
-    WsConn_PacketSend_Header_t Header;
+    WsConn_PacketSend_Header_t HeaderSt;
     WsConn_SendDataFromHmi_State_t statePacket;
 
     WsConn_Param_Data_Flow_t AllDataFlow;
     WsConn_Param_Data_ClockAndData_t ClockAndData;
 
-    WsConn_PacketSend_Footer_t Footer;
+    uint16_t footer;
 }WsConn_SendDataFromHmi_All_t;
 
 /*************************************************/
@@ -104,11 +105,11 @@ typedef struct
 
 typedef struct
 {
-    WsConn_PacketSend_Header_t Header;
+    WsConn_PacketSend_Header_t HeaderSt;
     WsConn_SendSettingFromHmi_State_t statePacket;
 
 
-    WsConn_PacketSend_Footer_t Footer;
+    uint16_t footer;
 }WsConn_SendSettingFromHmi_All_t;
 
 /*************************************************/

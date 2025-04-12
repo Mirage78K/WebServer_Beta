@@ -114,6 +114,8 @@ int main(void)
   debugLog_initBeforeTask();
 
   webUser_initialBeforeTask();
+  hmiConn_initialBeforeTask();
+
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN RTOS_MUTEX */

@@ -12,6 +12,9 @@
 #include "main.h"
 
 
+#define DEBUG_UART_HANDLER		huart1
+
+
 void debugLog_initBeforeTask();
 void debugLog_printLogWithMutex(char *data, uint16_t len);
 

@@ -78,13 +78,7 @@ void webUser_taskHandler_webServer(void *arg)
 
 void webUser_initialBeforeTask()
 {
-	//create mutex
-
-	//create sema
-
-	//create queue
-
-	//create task
+	//Nothing
 }
 
 

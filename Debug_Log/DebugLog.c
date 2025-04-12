@@ -11,7 +11,7 @@
 #include <string.h>
 
 
-extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef DEBUG_UART_HANDLER;
 
 
 SemaphoreHandle_t sendLogUartMutexHandle;
@@ -43,13 +43,13 @@ void debugLog_printLogWithMutex(char *data, uint16_t len)
 
 	if(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED)
 	{
-		HAL_UART_Transmit(&huart1, (uint8_t *)data, dataLen, 100);
+//		HAL_UART_Transmit(&huart1, (uint8_t *)data, dataLen, 100);
 	}
 	else
 	{
 		if(xSemaphoreTake(sendLogUartMutexHandle, pdMS_TO_TICKS(200)) == pdTRUE)
 		{
-			HAL_UART_Transmit(&huart1, (uint8_t *)data, dataLen, 100);
+//			HAL_UART_Transmit(&huart1, (uint8_t *)data, dataLen, 100);
 			xSemaphoreGive(sendLogUartMutexHandle);
 		}
 	}
