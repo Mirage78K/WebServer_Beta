@@ -83,13 +83,13 @@ typedef struct
 
 typedef struct
 {
-	uint16_t Year;
-	uint8_t Month;
-	uint8_t Day;
+	uint16_t year;
+	uint8_t month;
+	uint8_t day;
 
-	uint8_t Hour;
-	uint8_t Minute;
-	uint8_t Second;
+	uint8_t hour;
+	uint8_t minute;
+	uint8_t second;
 }WsConn_Param_Data_ClockAndData_t;
 
 

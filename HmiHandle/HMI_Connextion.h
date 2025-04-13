@@ -37,7 +37,8 @@ struct ParamFromHmi_Setting_t
 
 struct PramFromHmi_StateFlags_t
 {
-    uint8_t paramReady;
+    bool isSettingReceived;
+    bool isDataReceived;
 };
 
 
