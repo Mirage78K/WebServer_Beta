@@ -7,10 +7,12 @@
 
 
 #include "Web_User.h"
+#include <string.h>
 #include "cmsis_os.h"
 #include "mongoose.h"
 #include "mongoose_glue.h"
 #include "DebugLog.h"
+#include "HMI_Connextion.h"
 
 
 #define ETH_PHY_ADDRESS						0
@@ -29,13 +31,14 @@ extern void http_ev_handler(struct mg_connection *c, int ev, void *ev_data);
 extern void send_websocket_data(void);
 
 /*extern variable*/
-
+extern gParamFromHmi_t gParamFromHmi;
 
 /*Global Variable*/
 TaskHandle_t WebServer_TaskHandler;
 
 
 /*Local Variable*/
+static char tempBuffer[64];
 gWebServer_t gWebServer;
 
 
@@ -46,7 +49,7 @@ struct mg_tcpip_driver_stm32f_data driver_data;
 
 
 //websocket
-static void ws_200(struct mg_connection *c);
+static void ws_1000(struct mg_connection *c);
 
 
 
@@ -110,11 +113,27 @@ static void userInit()
 
 
 /*Websocket handle functions*/
-static void ws_200(struct mg_connection *c)
+static void ws_1000(struct mg_connection *c)
 {
-	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %lu}", MG_ESC("uvol"), HAL_GetTick());
+	sprintf(tempBuffer,"\"%02d:%02d:%02d\"", gParamFromHmi.Data.ClockAndData.hour, gParamFromHmi.Data.ClockAndData.minute, gParamFromHmi.Data.ClockAndData.second);
+	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("localTime"), tempBuffer);
 }
 
+
+static void ws_500(struct mg_connection *c)
+{
+	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_cvol);
+	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("cvol_1"), tempBuffer);
+
+	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_uvol);
+	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("uvol_1"), tempBuffer);
+
+	sprintf(tempBuffer,"\"%.2lf Kg\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_mass);
+	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("mass_1"), tempBuffer);
+
+	sprintf(tempBuffer,"\"%.2lf GJ\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_energy);
+	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("energy_1"), tempBuffer);
+}
 
 
 /*add thirdparty function*/
@@ -174,7 +193,8 @@ static void thirdPartyInit()
     mg_http_listen(&g_mgr, "http://0.0.0.0:80", http_ev_handler, NULL);
 
     //Web Socket
-    mongoose_add_ws_handler(200, ws_200);
+    mongoose_add_ws_handler(1000, ws_1000);
+    mongoose_add_ws_handler(500, ws_500);
 }
 
 

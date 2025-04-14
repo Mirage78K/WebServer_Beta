@@ -43,6 +43,14 @@
   "4hf5Gx17YJkq5/z3k6ogPDPpoAYWIw1/sw==\n"                             \
   "-----END EC PRIVATE KEY-----\n"
 
+typedef void (*mongoose_data_func_t)(void *);
+typedef bool (*mongoose_action_checker_t)(void);
+typedef void (*mongoose_action_starter_t)(struct mg_str);
+typedef void *(*mongoose_ota_opener_t)(char *, size_t);
+typedef bool (*mongoose_ota_closer_t)(void *);
+typedef bool (*mongoose_ota_writer_t)(void *, void *, size_t);
+typedef void (*mongoose_custom_reply_t)(struct mg_connection *, struct mg_http_message *);
+
 struct mg_mgr g_mgr;  // Mongoose event manager
 
 #if WIZARD_ENABLE_HTTP || WIZARD_ENABLE_HTTPS
@@ -154,21 +162,21 @@ void mongoose_set_http_handlers(const char *name, ...) {
   if (h == NULL) {
     MG_ERROR(("No API with name [%s]", name));
   } else if (strcmp(h->type, "data") == 0) {
-    ((struct apihandler_data *) h)->getter = va_arg(ap, void (*)(void *));
-    ((struct apihandler_data *) h)->setter = va_arg(ap, void (*)(void *));
+    ((struct apihandler_data *) h)->getter = va_arg(ap, mongoose_data_func_t);
+    ((struct apihandler_data *) h)->setter = va_arg(ap, mongoose_data_func_t);
   } else if (strcmp(h->type, "action") == 0) {
-    ((struct apihandler_action *) h)->checker = va_arg(ap, bool (*)(void));
+    ((struct apihandler_action *) h)->checker = va_arg(ap, mongoose_action_checker_t);
     ((struct apihandler_action *) h)->starter =
-        va_arg(ap, void (*)(struct mg_str));
+        va_arg(ap, mongoose_action_starter_t);
   } else if (strcmp(h->type, "ota") == 0 || strcmp(h->type, "upload") == 0) {
     ((struct apihandler_ota *) h)->opener =
-        va_arg(ap, void *(*) (char *, size_t));
-    ((struct apihandler_ota *) h)->closer = va_arg(ap, bool (*)(void *));
+        va_arg(ap, mongoose_ota_opener_t);
+    ((struct apihandler_ota *) h)->closer = va_arg(ap, mongoose_ota_closer_t);
     ((struct apihandler_ota *) h)->writer =
-        va_arg(ap, bool (*)(void *, void *, size_t));
+        va_arg(ap, mongoose_ota_writer_t);
   } else if (strcmp(h->type, "custom") == 0) {
     ((struct apihandler_custom *) h)->reply =
-        va_arg(ap, void (*)(struct mg_connection *, struct mg_http_message *));
+        va_arg(ap, mongoose_custom_reply_t);
   } else {
     MG_ERROR(("Setting [%s] failed: not implemented", name));
   }
@@ -815,7 +823,7 @@ static void dns_fn(struct mg_connection *c, int ev, void *ev_data) {
       memcpy(buf + sizeof(*h), c->recv.buf + sizeof(*h), n);  // Copy question
       memcpy(buf + sizeof(*h) + n, answer, sizeof(answer));   // And answer
 #if MG_ENABLE_TCPIP
-      ip = MG_TCPIP_IFACE(c->mgr)->ip;
+      ip = c->mgr->ifp->ip;
 #else
       ip = MG_TCPIP_IP;
 #endif
