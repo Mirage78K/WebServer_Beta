@@ -154,7 +154,7 @@ int main(void)
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   xTaskCreate(normalTask_taskHandler, "Normal Task", 128, NULL, tskIDLE_PRIORITY, &NormalTask_TaskHandler);
-  xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 2048, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
+  xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 8192, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
   xTaskCreate(hmiConn_taskHandler_connection, "HMI Connection", 256, NULL, tskIDLE_PRIORITY, &hmiConn_TaskHandle);
   /* USER CODE END RTOS_THREADS */
 

@@ -20,6 +20,7 @@
 //For Embedded File System
 #define MG_ENABLE_PACKED_FS 			0
 #define MG_ENABLE_FATFS					1
+#define MG_ENABLE_DIRLIST				1
 #define MG_ENABLE_POSIX_FS				0
 
 #define MG_IO_SIZE						256		//default
