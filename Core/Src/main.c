@@ -117,6 +117,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   debugLog_initBeforeTask();
 
+
+
   webUser_initialBeforeTask();
   hmiConn_initialBeforeTask();
 
