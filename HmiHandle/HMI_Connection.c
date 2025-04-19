@@ -98,7 +98,7 @@ void hmiConn_taskHandler_connection(void *arg)
     }
 }
 
-void hmiConn_initialBeforeTask()
+void hmiConn_initialAfterRtosApi()
 {
     //Nothing
 }

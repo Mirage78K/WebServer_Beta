@@ -55,7 +55,7 @@ typedef struct
 
 
 void hmiConn_taskHandler_connection(void *arg);
-void hmiConn_initialBeforeTask();
+void hmiConn_initialAfterRtosApi();
 
 //ISR
 void hmiConn_UartExRxDmaISR(uint16_t size);

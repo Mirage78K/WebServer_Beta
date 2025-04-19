@@ -31,7 +31,7 @@ typedef struct
 
 
 
-void webUser_initialBeforeTask();
+void webUser_initialAfteRtosApi();
 void webUser_taskHandler_webServer(void *arg);
 
 

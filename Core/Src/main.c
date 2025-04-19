@@ -28,6 +28,7 @@
 #include "Web_User.h"
 #include "HMI_Connextion.h"
 #include "FreeRTOSConfig.h"
+#include "NormalTask.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,6 +68,7 @@ uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".ccmram")));
 #endif
 
 
+extern TaskHandle_t NormalTask_TaskHandler;
 extern TaskHandle_t WebServer_TaskHandler;
 extern TaskHandle_t hmiConn_TaskHandle;
 /* USER CODE END PV */
@@ -123,12 +125,11 @@ int main(void)
   MX_SDIO_SD_Init();
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-  debugLog_initBeforeTask();
+  normalTask_initialBeforeRtosApi();
 
-
-
-  webUser_initialBeforeTask();
-  hmiConn_initialBeforeTask();
+  debugLog_initAfterRtosApi();
+  webUser_initialAfteRtosApi();
+  hmiConn_initialAfterRtosApi();
 
   /* USER CODE END 2 */
 
@@ -152,7 +153,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 1024, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
+  xTaskCreate(normalTask_taskHandler, "Normal Task", 128, NULL, tskIDLE_PRIORITY, &NormalTask_TaskHandler);
+  xTaskCreate(webUser_taskHandler_webServer, "Task WebServer", 2048, NULL, tskIDLE_PRIORITY, &WebServer_TaskHandler);
   xTaskCreate(hmiConn_taskHandler_connection, "HMI Connection", 256, NULL, tskIDLE_PRIORITY, &hmiConn_TaskHandle);
   /* USER CODE END RTOS_THREADS */
 
@@ -289,7 +291,7 @@ static void MX_SDIO_SD_Init(void)
   hsd.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd.Init.ClockDiv = 10;
   /* USER CODE BEGIN SDIO_Init 2 */
-
+  hsd.Init.BusWide = SDIO_BUS_WIDE_1B;
   /* USER CODE END SDIO_Init 2 */
 
 }

@@ -17,7 +17,7 @@ extern UART_HandleTypeDef DEBUG_UART_HANDLER;
 SemaphoreHandle_t sendLogUartMutexHandle;
 
 
-void debugLog_initBeforeTask()
+void debugLog_initAfterRtosApi()
 {
     //Create Mutex
 	sendLogUartMutexHandle = xSemaphoreCreateMutex();
