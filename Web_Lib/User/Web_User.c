@@ -87,7 +87,7 @@ void webUser_initialBeforeTask()
 
 static void userInit()
 {
-	gWebServer.Config.Driver.macAddress[0] = 0x11;
+	gWebServer.Config.Driver.macAddress[0] = 0x02;
 	gWebServer.Config.Driver.macAddress[1] = 0x22;
 	gWebServer.Config.Driver.macAddress[2] = 0x44;
 	gWebServer.Config.Driver.macAddress[3] = 0x55;
@@ -97,7 +97,7 @@ static void userInit()
 	gWebServer.Config.Driver.ipV4[0] = 192;
 	gWebServer.Config.Driver.ipV4[1] = 168;
 	gWebServer.Config.Driver.ipV4[2] = 88;
-	gWebServer.Config.Driver.ipV4[3] = 160;
+	gWebServer.Config.Driver.ipV4[3] = 170;
 
 	gWebServer.Config.Driver.maskV4[0] = 255;
 	gWebServer.Config.Driver.maskV4[1] = 255;
@@ -117,11 +117,7 @@ static void ws_1000(struct mg_connection *c)
 {
 	sprintf(tempBuffer,"\"%02d:%02d:%02d\"", gParamFromHmi.Data.ClockAndData.hour, gParamFromHmi.Data.ClockAndData.minute, gParamFromHmi.Data.ClockAndData.second);
 	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("localTime"), tempBuffer);
-}
 
-
-static void ws_500(struct mg_connection *c)
-{
 	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_cvol);
 	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("cvol_1"), tempBuffer);
 
@@ -133,6 +129,12 @@ static void ws_500(struct mg_connection *c)
 
 	sprintf(tempBuffer,"\"%.2lf GJ\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_energy);
 	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("energy_1"), tempBuffer);
+}
+
+
+static void ws_500(struct mg_connection *c)
+{
+	NULL;
 }
 
 
@@ -186,8 +188,10 @@ static void thirdPartyInit()
 	mif.mac[4] = gWebServer.Config.Driver.macAddress[4];
 	mif.mac[5] = gWebServer.Config.Driver.macAddress[5];
 
+	MG_SET_MAC_ADDRESS(mif.mac);
+
 	NVIC_EnableIRQ(ETH_IRQn);
-    mg_tcpip_init(&g_mgr, &mif);
+	mg_tcpip_init(&g_mgr, &mif);
 
     //Initial HTTP App
     mg_http_listen(&g_mgr, "http://0.0.0.0:80", http_ev_handler, NULL);
