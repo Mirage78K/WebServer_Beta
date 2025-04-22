@@ -115,20 +115,21 @@ static void userInit()
 /*Websocket handle functions*/
 static void ws_1000(struct mg_connection *c)
 {
-	sprintf(tempBuffer,"\"%02d:%02d:%02d\"", gParamFromHmi.Data.ClockAndData.hour, gParamFromHmi.Data.ClockAndData.minute, gParamFromHmi.Data.ClockAndData.second);
-	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("localTime"), tempBuffer);
-
-	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_cvol);
-	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("cvol_1"), tempBuffer);
-
-	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_uvol);
-	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("uvol_1"), tempBuffer);
-
-	sprintf(tempBuffer,"\"%.2lf Kg\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_mass);
-	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("mass_1"), tempBuffer);
-
-	sprintf(tempBuffer,"\"%.2lf GJ\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_energy);
-	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("energy_1"), tempBuffer);
+//	sprintf(tempBuffer,"\"%02d:%02d:%02d\"", gParamFromHmi.Data.ClockAndData.hour, gParamFromHmi.Data.ClockAndData.minute, gParamFromHmi.Data.ClockAndData.second);
+//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("localTime"), tempBuffer);
+//
+//	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_cvol);
+//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("cvol_1"), tempBuffer);
+//
+//	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_uvol);
+//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("uvol_1"), tempBuffer);
+//
+//	sprintf(tempBuffer,"\"%.2lf Kg\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_mass);
+//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("mass_1"), tempBuffer);
+//
+//	sprintf(tempBuffer,"\"%.2lf GJ\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_energy);
+//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("energy_1"), tempBuffer);
+	HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
 }
 
 
