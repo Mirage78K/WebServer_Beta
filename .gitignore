@@ -7,7 +7,7 @@
 /.vscode
 *.launch
 
-/frontendFiles/wizardFile
+/frontendFiles/wizardFile/*
 # !/frontendFiles/wizardFile/mongoose
 
 

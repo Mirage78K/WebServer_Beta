@@ -13,6 +13,7 @@
 #include "mongoose_glue.h"
 #include "DebugLog.h"
 #include "HMI_Connextion.h"
+#include "WebsocketHandle.h"
 
 
 #define ETH_PHY_ADDRESS						0
@@ -108,6 +109,8 @@ static void userInit()
 	gWebServer.Config.Driver.gwV4[1] = 168;
 	gWebServer.Config.Driver.gwV4[2] = 88;
 	gWebServer.Config.Driver.gwV4[3] = 1;
+
+	websoketHandle_init();
 }
 
 
@@ -140,9 +143,38 @@ static void ws_500(struct mg_connection *c)
 
 
 /*add thirdparty function*/
+struct
+{
+	struct
+	{
+		uint32_t open;
+		uint32_t accept;
+		uint32_t close;
+		uint32_t webSocketOpen;
+	}Cnt;
+}Test;
 int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data)		//if return == 0 then countinue
 {
 	//Nothing
+	if(ev == MG_EV_OPEN)
+	{
+		Test.Cnt.open++;
+	}
+
+	if(ev == MG_EV_ACCEPT)
+	{
+		Test.Cnt.accept++;
+	}
+
+	if(ev == MG_EV_WS_OPEN)
+	{
+		Test.Cnt.webSocketOpen++;
+	}
+
+	if(ev == MG_EV_CLOSE)
+	{
+		Test.Cnt.close++;
+	}
 
 	return 0;
 }
