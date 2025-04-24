@@ -10,7 +10,14 @@
 
 
 #include "main.h"
-#include "mongoose.h"
+
+
+typedef enum
+{
+    WebsocketHandle_DataType_TotalAndFlow,
+    WebsocketHandle_DataType_TotalAndFlowError,
+}WebsocketHandle_DataType_e;
+
 
 
 #endif /* USER_WEBSOCKETHANDLE_H_ */

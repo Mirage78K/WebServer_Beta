@@ -7,6 +7,9 @@
 /.vscode
 *.launch
 
+/frontendFiles/wizardFile
+# !/frontendFiles/wizardFile/mongoose
+
 
 # Prerequisites
 *.d
