@@ -116,23 +116,14 @@ static void userInit()
 
 
 /*Websocket handle functions*/
+uint32_t cntTest_1;
 static void ws_1000(struct mg_connection *c)
 {
-//	sprintf(tempBuffer,"\"%02d:%02d:%02d\"", gParamFromHmi.Data.ClockAndData.hour, gParamFromHmi.Data.ClockAndData.minute, gParamFromHmi.Data.ClockAndData.second);
-//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("localTime"), tempBuffer);
-//
-//	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_cvol);
-//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("cvol_1"), tempBuffer);
-//
-//	sprintf(tempBuffer,"\"%.2lf m3\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_uvol);
-//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("uvol_1"), tempBuffer);
-//
-//	sprintf(tempBuffer,"\"%.2lf Kg\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_mass);
-//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("mass_1"), tempBuffer);
-//
-//	sprintf(tempBuffer,"\"%.2lf GJ\"",gParamFromHmi.Data.AllDataFlow.Now[0].total_energy);
-//	mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m: %s}", MG_ESC("energy_1"), tempBuffer);
-	HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalAndFlow) == 1)
+	{
+		cntTest_1++;
+		HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
+	}
 }
 
 
@@ -143,37 +134,16 @@ static void ws_500(struct mg_connection *c)
 
 
 /*add thirdparty function*/
-struct
-{
-	struct
-	{
-		uint32_t open;
-		uint32_t accept;
-		uint32_t close;
-		uint32_t webSocketOpen;
-	}Cnt;
-}Test;
 int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data)		//if return == 0 then countinue
 {
-	//Nothing
-	if(ev == MG_EV_OPEN)
-	{
-		Test.Cnt.open++;
-	}
-
-	if(ev == MG_EV_ACCEPT)
-	{
-		Test.Cnt.accept++;
-	}
-
 	if(ev == MG_EV_WS_OPEN)
 	{
-		Test.Cnt.webSocketOpen++;
+		websocketHandle_addNewWebsocketConnection(c);
 	}
 
 	if(ev == MG_EV_CLOSE)
 	{
-		Test.Cnt.close++;
+		websocketHandle_removeWebsocketConnection(c);
 	}
 
 	return 0;

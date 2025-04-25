@@ -341,7 +341,7 @@ static void sendPacketToHmi()
 
     HAL_UART_Transmit_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.dataSendBuffer, HMICONN_PACKET_SEND_LENGTH);
 
-    HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
+//    HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
 }
 
 

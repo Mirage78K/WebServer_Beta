@@ -9,7 +9,7 @@
 #include "WebsocketHandle.h"
 #include "Web_User.h"
 #include "SHA256/MySHA256.h"
-
+#include "HMI_Connextion.h"
 
 
 #define LIST_CLIENT_MAX_CLIENT		(WEB_USER_MAX_CLIENT - 2)
@@ -28,8 +28,8 @@ typedef struct
 
     struct
     {
-        uint8_t hashData_totalAndFlow[32];
-        uint8_t hashData_totalAndFlowError[32];
+        uint8_t hashData_st1TotalAndFlow[32];
+        uint8_t hashData_st1TotalAndFlowError[32];
     }LastBuffer;
     
 }WebSocketClient_t;
@@ -43,8 +43,18 @@ typedef struct
 
 
 
+extern gParamFromHmi_t gParamFromHmi;
+
 
 WebsocketHandle_t WebsocketHandle;
+SHA256_CTX Sha256Ctx;
+
+
+
+
+/*Function Prototypes*/
+static void hashDataType_st1TotalAndFlow(uint8_t *outputHash);
+static void hashDataType_st1TotalAndFlowError(uint8_t *outputHash);
 
 
 
@@ -138,7 +148,7 @@ int websocketHandle_removeWebsocketConnection(struct mg_connection *c)
 }
 
 
-int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataType_e NewDataType, uint8_t *dataIn, uint32_t dataInLen)
+int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataType_e NewDataType)
 {
     /**
      * 1- find client and if not found return -1.
@@ -181,15 +191,14 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
     }
 
 
-    mySha256_calculate(dataIn, dataInLen, newSha256);
-
     switch (NewDataType)
     {
-    case WebsocketHandle_DataType_TotalAndFlow:
-        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_totalAndFlow, sizeof(newSha256)) != 0)
+    case WebsocketHandle_DataType_St1TotalAndFlow:
+        hashDataType_st1TotalAndFlow(newSha256);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalAndFlow, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
-            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_totalAndFlow, newSha256, sizeof(newSha256));
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalAndFlow, newSha256, sizeof(newSha256));
         }
         else
         {
@@ -197,7 +206,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         }
         break;
 
-    case WebsocketHandle_DataType_TotalAndFlowError:
+    case WebsocketHandle_DataType_St1TotalAndFlowError:
         NULL;
         break;
     }
@@ -206,6 +215,24 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
     return outputRes;
 }
 
+
+
+
+/*hash functions Type of Datas*/
+static void hashDataType_st1TotalAndFlow(uint8_t *outputHash)
+{
+	sha256_init(&Sha256Ctx);
+
+	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[0], sizeof(gParamFromHmi.Data.AllDataFlow.Now[0]));
+
+	sha256_final(&Sha256Ctx, outputHash);
+}
+
+
+static void hashDataType_st1TotalAndFlowError(uint8_t *outputHash)
+{
+
+}
 
 
 

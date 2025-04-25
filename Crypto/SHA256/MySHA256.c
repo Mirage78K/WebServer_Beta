@@ -2,12 +2,6 @@
 #include <string.h>
 
 
-typedef struct {
-	uint8_t data[64];
-	uint32_t datalen;
-	uint64_t bitlen;
-	uint32_t state[8];
-} SHA256_CTX;
 
 
 
@@ -39,9 +33,7 @@ static const uint32_t k[64] = {
 
 
 static void sha256_transform(SHA256_CTX *ctx, const uint8_t *data);
-static void sha256_init(SHA256_CTX *ctx);
-static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len);
-static void sha256_final(SHA256_CTX *ctx, uint8_t *hash);
+
 /*********************** FUNCTION DEFINITIONS ***********************/
 int mySha256_calculate(const uint8_t *inputData, uint32_t inputLen, uint8_t *outputData)
 {
@@ -98,7 +90,7 @@ static void sha256_transform(SHA256_CTX *ctx, const uint8_t *data)
 }
 
 
-static void sha256_init(SHA256_CTX *ctx)
+void sha256_init(SHA256_CTX *ctx)
 {
 	ctx->datalen = 0;
 	ctx->bitlen = 0;
@@ -112,7 +104,7 @@ static void sha256_init(SHA256_CTX *ctx)
 	ctx->state[7] = 0x5be0cd19;
 }
 
-static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len)
+void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len)
 {
 	uint32_t i;
 
@@ -127,7 +119,7 @@ static void sha256_update(SHA256_CTX *ctx, const uint8_t *data, size_t len)
 	}
 }
 
-static void sha256_final(SHA256_CTX *ctx, uint8_t *hash)
+void sha256_final(SHA256_CTX *ctx, uint8_t *hash)
 {
 	uint32_t i;
 

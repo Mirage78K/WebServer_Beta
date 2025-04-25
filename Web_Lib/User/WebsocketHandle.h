@@ -15,8 +15,8 @@
 
 typedef enum
 {
-    WebsocketHandle_DataType_TotalAndFlow,
-    WebsocketHandle_DataType_TotalAndFlowError,
+    WebsocketHandle_DataType_St1TotalAndFlow,
+    WebsocketHandle_DataType_St1TotalAndFlowError,
 }WebsocketHandle_DataType_e;
 
 
@@ -24,7 +24,7 @@ typedef enum
 void websoketHandle_init();
 int websocketHandle_addNewWebsocketConnection(struct mg_connection *c);
 int websocketHandle_removeWebsocketConnection(struct mg_connection *c);
-int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataType_e NewDataType, uint8_t *dataIn, uint32_t dataInLen);
+int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataType_e NewDataType);
 
 
 
