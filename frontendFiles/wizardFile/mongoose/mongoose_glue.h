@@ -61,6 +61,8 @@ struct mongoose_modbus_handlers {
 };
 void mongoose_set_modbus_handlers(struct mongoose_modbus_handlers *);
 
+void mongoose_set_auth_handler(int (*fn)(const char *user, const char *pass));
+
 #define run_mongoose() \
   do {                 \
     mongoose_init();   \

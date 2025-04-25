@@ -5,15 +5,14 @@
 #include "mongoose.h"
 #include "mongoose_glue.h"
 
-/*Add by Mojtaba*/
-#include "Web_User.h"
-
+#if !defined(HTTP_URL) && !defined(HTTPS_URL)
 #if MG_ARCH == MG_ARCH_UNIX || MG_ARCH == MG_ARCH_WIN32
 #define HTTP_URL "http://0.0.0.0:8080"
 #define HTTPS_URL "https://0.0.0.0:8443"
 #else
 #define HTTP_URL "http://0.0.0.0:80"
 #define HTTPS_URL "https://0.0.0.0:443"
+#endif
 #endif
 
 #ifndef offsetof
@@ -192,7 +191,12 @@ struct user {
   int level;       // Access level
 };
 
+static int (*s_auth)(const char *, const char *) = glue_authenticate;
 static struct user *s_users;  // List of authenticated users
+
+void mongoose_set_auth_handler(int (*fn)(const char *, const char *)) {
+  s_auth = fn;
+}
 
 // Parse HTTP requests, return authenticated user or NULL
 static struct user *authenticate(struct mg_http_message *hm) {
@@ -202,7 +206,7 @@ static struct user *authenticate(struct mg_http_message *hm) {
 
   if (user[0] != '\0' && pass[0] != '\0') {
     // Both user and password is set, auth by user/password via glue API
-    int level = glue_authenticate(user, pass);
+    int level = s_auth(user, pass);
     MG_DEBUG(("user %s, level: %d", user, level));
     if (level > 0) {  // Proceed only if the firmware authenticated us
       // uint64_t uid = hash(3, mg_str(user), mg_str(":"), mg_str(pass));
@@ -836,6 +840,56 @@ static void dns_fn(struct mg_connection *c, int ev, void *ev_data) {
 }
 #endif  // WIZARD_CAPTIVE_PORTAL
 
+#if WIZARD_ENABLE_MDNS
+
+static const uint8_t mdns_answer[] = {
+    0xc0, 0x0c,          // Point to the name in the DNS question
+    0,    1,             // 2 bytes - record type, A
+    0,    1,             // 2 bytes - address class, INET
+    0,    0,    0, 120,  // 4 bytes - TTL
+    0,    4              // 2 bytes - address length
+};
+
+static void mdns_fn(struct mg_connection *c, int ev, void *ev_data) {
+  if (ev == MG_EV_READ) {
+    struct mg_dns_rr rr;  // Parse first question, offset 12 is header size
+    size_t n = mg_dns_parse_rr(c->recv.buf, c->recv.len, 12, true, &rr);
+    MG_DEBUG(("MDNS request parsed, result=%d", (int) n));
+    if (n > 0) {
+      char buf[512];
+      char local_name[256];
+      uint32_t ip;
+      struct mg_dns_header *h = (struct mg_dns_header *) buf;
+      struct mg_dns_message dm;
+      mg_dns_parse(c->recv.buf, c->recv.len, &dm);
+      memset(buf, 0, sizeof(buf));  // Clear the whole datagram
+      memset(local_name, 0, sizeof(local_name));
+      mg_snprintf(local_name, sizeof(local_name) - 1, "%s.local", WIZARD_MDNS_NAME);
+      if (strcmp(local_name, dm.name)) {
+        mg_iobuf_del(&c->recv, 0, c->recv.len);
+        return; // Names do not match: drop
+      }
+      h->txnid = ((struct mg_dns_header *) c->recv.buf)->txnid;  // Copy tnxid
+      h->num_questions = mg_htons(1);  // We use only the 1st question
+      h->num_answers = mg_htons(1);    // And only one answer
+      h->flags = mg_htons(0x8400);     // Authoritative response
+      memcpy(buf + sizeof(*h), c->recv.buf + sizeof(*h), n);  // Copy question
+      memcpy(buf + sizeof(*h) + n, mdns_answer, sizeof(mdns_answer));   // And answer
+#if MG_ENABLE_TCPIP
+      ip = c->mgr->ifp->ip;
+#else
+      ip = MG_TCPIP_IP;
+#endif
+      memcpy(buf + sizeof(*h) + n + sizeof(mdns_answer), &ip, 4);
+      mg_send(c, buf, 12 + n + sizeof(mdns_answer) + 4);  // And send it!
+    }
+    mg_iobuf_del(&c->recv, 0, c->recv.len);
+  }
+  (void) ev_data;
+}
+
+#endif // WIZARD_ENABLE_MDNS
+
 void mongoose_init(void) {
   mg_mgr_init(&g_mgr);      // Initialise event manager
   mg_log_set(MG_LL_DEBUG);  // Set log level to debug
@@ -877,6 +931,12 @@ void mongoose_init(void) {
   mg_listen(&g_mgr, CAPTIVE_PORTAL_URL, dns_fn, NULL);
 #endif
 
+#if WIZARD_ENABLE_MDNS
+  MG_INFO(("Starting MDNS (domain name: %s.local)", WIZARD_MDNS_NAME));
+  mg_listen(&g_mgr, "udp://0.0.0.0:5353", mdns_fn, NULL);
+#endif
+
+  glue_lock_init();
   MG_INFO(("Mongoose init complete"));
 }
 
