@@ -54,7 +54,6 @@ SHA256_CTX Sha256Ctx;
 
 /*Function Prototypes*/
 static void hashDataType_st1TotalAndFlow(uint8_t *outputHash);
-static void hashDataType_st1TotalAndFlowError(uint8_t *outputHash);
 
 
 
@@ -193,6 +192,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
 
     switch (NewDataType)
     {
+    //Stream 1
     case WebsocketHandle_DataType_St1TotalAndFlow:
         hashDataType_st1TotalAndFlow(newSha256);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalAndFlow, sizeof(newSha256)) != 0)
@@ -206,9 +206,20 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         }
         break;
 
-    case WebsocketHandle_DataType_St1TotalAndFlowError:
+
+    //Stream 2
+    case WebsocketHandle_DataType_St2TotalAndFlow:
         NULL;
         break;
+
+
+    //Stream 3
+    case WebsocketHandle_DataType_St3TotalAndFlow:
+        NULL;
+        break;
+
+
+    //System
     }
 
 
@@ -228,11 +239,6 @@ static void hashDataType_st1TotalAndFlow(uint8_t *outputHash)
 	sha256_final(&Sha256Ctx, outputHash);
 }
 
-
-static void hashDataType_st1TotalAndFlowError(uint8_t *outputHash)
-{
-
-}
 
 
 

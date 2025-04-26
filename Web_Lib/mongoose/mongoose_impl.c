@@ -5,6 +5,10 @@
 #include "mongoose.h"
 #include "mongoose_glue.h"
 
+/*Add by Mojtaba*/
+#include "Web_User.h"
+
+
 #if !defined(HTTP_URL) && !defined(HTTPS_URL)
 #if MG_ARCH == MG_ARCH_UNIX || MG_ARCH == MG_ARCH_WIN32
 #define HTTP_URL "http://0.0.0.0:8080"

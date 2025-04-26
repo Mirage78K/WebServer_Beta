@@ -39,7 +39,8 @@ TaskHandle_t WebServer_TaskHandler;
 
 
 /*Local Variable*/
-static char tempBuffer[64];
+static char jsonSendBuffer[1024];
+static char tempBuff[64];
 gWebServer_t gWebServer;
 
 
@@ -60,6 +61,9 @@ static void checkPhyHandle();
 
 static uint16_t readPhy(uint8_t addr, uint8_t reg);
 static void mylog(char ch, void *param);
+
+
+static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer);
 
 
 
@@ -124,6 +128,13 @@ static void ws_1000(struct mg_connection *c)
 		cntTest_1++;
 		HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
 	}
+
+//	example:
+//	mg_ws_send(c, "{\"st1_uvolFlowrate\":\"25\"}", strlen("{\"st1_uvolFlowrate\":\"25\"}"), WEBSOCKET_OP_TEXT);
+
+
+	setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(1, jsonSendBuffer);
+	mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
 }
 
 
@@ -310,4 +321,71 @@ static void mylog(char ch, void *param)
   }
 
   (void) param;
+}
+
+
+/*Set JSON for Data stream Total and flow*/
+static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer)	//streamNum at one
+{
+	//Start
+	sprintf(buffer,"{");
+
+	//total
+	sprintf(tempBuff,"\"st%u_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_uvol);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_cvol);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_energy);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_mass);
+	strcat(buffer, tempBuff);
+
+	//flowrate
+	sprintf(tempBuff,"\"st%u_uvolFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].uvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_cvolFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].cvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_energyFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].energy_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_massFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].mass_flowrate);
+	strcat(buffer, tempBuff);
+
+	//Input Signal
+	sprintf(tempBuff,"\"st%u_signalFlowMeter\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].signal_flowmeter);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_pressure\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].pressure);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_temperature\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].temperature);
+	strcat(buffer, tempBuff);
+
+	//Output Calculation
+	sprintf(tempBuff,"\"st%u_conversionFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].conversion_c_factor);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_massDensity\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].density);
+	strcat(buffer, tempBuff);
+
+	//total Error
+	sprintf(tempBuff,"\"st%u_uvolError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_uvol_error);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_cvolError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_cvol_error);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_energyError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_energy_error);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_massError\":\"%.2lf\"",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_mass_error);
+	strcat(buffer, tempBuff);
+
+	//End
+	strcat(buffer,"}");
 }

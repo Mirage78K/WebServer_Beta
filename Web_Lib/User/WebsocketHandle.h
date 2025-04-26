@@ -15,8 +15,16 @@
 
 typedef enum
 {
+    //Stream 1
     WebsocketHandle_DataType_St1TotalAndFlow,
-    WebsocketHandle_DataType_St1TotalAndFlowError,
+
+    //Stream 2
+    WebsocketHandle_DataType_St2TotalAndFlow,
+
+    //Stream 3
+    WebsocketHandle_DataType_St3TotalAndFlow,
+
+    //System
 }WebsocketHandle_DataType_e;
 
 
