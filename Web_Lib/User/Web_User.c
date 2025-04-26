@@ -324,7 +324,15 @@ static void mylog(char ch, void *param)
 }
 
 
-/*Set JSON for Data stream Total and flow*/
+
+/*Set JSON Functions*/
+//WS Specs
+static void setJson_wsSpec(char *buffer)
+{
+
+}
+
+//Data stream Total and flow
 static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer)	//streamNum at one
 {
 	//Start

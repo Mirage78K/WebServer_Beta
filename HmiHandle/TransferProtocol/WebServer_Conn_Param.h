@@ -97,7 +97,7 @@ typedef struct
 typedef struct
 {
 
-}WsConn_Param_Setting__t;
+}WsConn_Param_Setting_Dummy_t;
 
 
 
