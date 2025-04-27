@@ -329,7 +329,64 @@ static void mylog(char ch, void *param)
 //WS Specs
 static void setJson_wsSpec(char *buffer)
 {
+	//Start
+	sprintf(buffer,"{");
 
+	for (uint8_t i = 0; i < WSCONN_PARAM_STREAM_NUM; i++)
+	{
+		//Flometer Type
+		if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Inactive)
+		{
+			sprintf(tempBuff,"\"wsSpec_flometerType\":\"inactive\",");
+		}
+		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Pulse_Meter)
+		{
+			sprintf(tempBuff,"\"wsSpec_flometerType\":\"pulseMeter\",");
+		}
+		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Diff_Pressure_meter)
+		{
+			sprintf(tempBuff,"\"wsSpec_flometerType\":\"DiffPressMeter\",");
+		}
+		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Ultrasonic)
+		{
+			sprintf(tempBuff,"\"wsSpec_flometerType\":\"ultrasonic\",");
+		}
+		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Current_input)
+		{
+			sprintf(tempBuff,"\"wsSpec_flometerType\":\"currentInput\",");
+		}
+
+		strcat(buffer, tempBuff);	
+		
+		//Fluid And Fluid Type
+		if(gParamFromHmi.Setting.SetupStream[i].Fluid.fluid == Stream_Gasses)
+		{
+			sprintf(tempBuff,"\"wsSpec_fluid\":\"gasses\",");
+			strcat(buffer, tempBuff);
+
+			sprintf(tempBuff,"\"wsSpec_fluidType\":\"naturalGas\"");
+			strcat(buffer, tempBuff);
+		}
+		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Liquid)
+		{
+			sprintf(tempBuff,"\"wsSpec_fluid\":\"liquid\",");
+			strcat(buffer, tempBuff);
+
+			sprintf(tempBuff,"\"wsSpec_fluidType\":\"gasoil\"");
+			strcat(buffer, tempBuff);
+		}
+		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Water)
+		{
+			sprintf(tempBuff,"\"wsSpec_fluid\":\"water\",");
+			strcat(buffer, tempBuff);
+
+			sprintf(tempBuff,"\"wsSpec_fluidType\":\"none\"");
+			strcat(buffer, tempBuff);
+		}
+	}
+	
+	//End
+	strcat(buffer,"}");
 }
 
 //Data stream Total and flow

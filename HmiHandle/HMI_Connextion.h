@@ -27,12 +27,13 @@
 struct ParamFromHmi_Data_t
 {
 	WsConn_Param_Data_Flow_t AllDataFlow;
+    WsConn_Param_Data_OutputCalc_t AllOutputCalc;
     WsConn_Param_Data_ClockAndData_t ClockAndData;
 };
 
 struct ParamFromHmi_Setting_t
 {
-    uint8_t dummy;
+    WsConn_Param_Setting_SetupStream_t SetupStream[WSCONN_PARAM_STREAM_NUM];
 };
 
 struct PramFromHmi_StateFlags_t
