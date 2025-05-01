@@ -392,63 +392,82 @@ static void setJson_wsSpec(char *buffer)
 //Data stream Total and flow
 static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer)	//streamNum at one
 {
+	uint8_t streaNumAtZero = streamNum - 1;
+
 	//Start
 	sprintf(buffer,"{");
 
 	//total
-	sprintf(tempBuff,"\"st%u_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_uvol);
+	sprintf(tempBuff,"\"st%u_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_uvol);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_cvol);
+	sprintf(tempBuff,"\"st%u_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_cvol);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_energy);
+	sprintf(tempBuff,"\"st%u_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_energy);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_mass);
+	sprintf(tempBuff,"\"st%u_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_mass);
 	strcat(buffer, tempBuff);
 
 	//flowrate
-	sprintf(tempBuff,"\"st%u_uvolFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].uvol_flowrate);
+	sprintf(tempBuff,"\"st%u_uvolFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].uvol_flowrate);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_cvolFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].cvol_flowrate);
+	sprintf(tempBuff,"\"st%u_cvolFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].cvol_flowrate);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_energyFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].energy_flowrate);
+	sprintf(tempBuff,"\"st%u_energyFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].energy_flowrate);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_massFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].mass_flowrate);
+	sprintf(tempBuff,"\"st%u_massFlowrate\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].mass_flowrate);
 	strcat(buffer, tempBuff);
 
 	//Input Signal
-	sprintf(tempBuff,"\"st%u_signalFlowMeter\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].signal_flowmeter);
+	sprintf(tempBuff,"\"st%u_signalFlowMeter\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].signal_flowmeter);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_pressure\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].pressure);
+	sprintf(tempBuff,"\"st%u_pressure\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].pressure);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_temperature\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].temperature);
+	sprintf(tempBuff,"\"st%u_temperature\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].temperature);
 	strcat(buffer, tempBuff);
 
 	//Output Calculation
-	sprintf(tempBuff,"\"st%u_conversionFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].conversion_c_factor);
-	strcat(buffer, tempBuff);
+	if(gParamFromHmi.Setting.SetupStream[streaNumAtZero].flowMeterType == Stream_Gasses)
+	{
+		sprintf(tempBuff,"\"st%u_conversionFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].conversion_c_factor);
+		strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_massDensity\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].density);
-	strcat(buffer, tempBuff);
+		sprintf(tempBuff,"\"st%u_compressibilityFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streaNumAtZero].zFactor);
+		strcat(buffer, tempBuff);
+	
+		sprintf(tempBuff,"\"st%u_density\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].density);
+		strcat(buffer, tempBuff);
+	}
+	else if(gParamFromHmi.Setting.SetupStream[streaNumAtZero].flowMeterType == Stream_Gasses)
+	{
+		sprintf(tempBuff,"\"st%u_cpl\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.Liquid[streaNumAtZero].cpl);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_ctl\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.Liquid[streaNumAtZero].cpl);
+		strcat(buffer, tempBuff);
+	
+		sprintf(tempBuff,"\"st%u_density\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].density);
+		strcat(buffer, tempBuff);
+	}
 
 	//total Error
-	sprintf(tempBuff,"\"st%u_uvolError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_uvol_error);
+	sprintf(tempBuff,"\"st%u_uvolError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_uvol_error);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_cvolError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_cvol_error);
+	sprintf(tempBuff,"\"st%u_cvolError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_cvol_error);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_energyError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_energy_error);
+	sprintf(tempBuff,"\"st%u_energyError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_energy_error);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_massError\":\"%.2lf\"",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streamNum].total_mass_error);
+	sprintf(tempBuff,"\"st%u_massError\":\"%.2lf\"",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_mass_error);
 	strcat(buffer, tempBuff);
 
 	//End
