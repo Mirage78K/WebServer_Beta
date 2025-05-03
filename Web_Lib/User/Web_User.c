@@ -39,7 +39,7 @@ TaskHandle_t WebServer_TaskHandler;
 
 
 /*Local Variable*/
-static char jsonSendBuffer[1024];
+static char jsonSendBuffer[2048];
 static char tempBuff[64];
 gWebServer_t gWebServer;
 
@@ -63,7 +63,10 @@ static uint16_t readPhy(uint8_t addr, uint8_t reg);
 static void mylog(char ch, void *param);
 
 
+static void setJson_wsSpecAndStreamStatus(char *buffer);
 static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer);
+static void setJson_average(uint8_t streamNum, char *buffer);
+static void setJson_totalPrevious(uint8_t streamNum, char *buffer);
 
 
 
@@ -123,18 +126,31 @@ static void userInit()
 uint32_t cntTest_1;
 static void ws_1000(struct mg_connection *c)
 {
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalAndFlow) == 1)
+	//send ws spec
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_WsSpec) == 1)
 	{
-		cntTest_1++;
-		HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
+		setJson_wsSpecAndStreamStatus(jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
 	}
 
-//	example:
-//	mg_ws_send(c, "{\"st1_uvolFlowrate\":\"25\"}", strlen("{\"st1_uvolFlowrate\":\"25\"}"), WEBSOCKET_OP_TEXT);
+	//send stream 1
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalAndFlow) == 1)
+	{
+		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
 
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1Average) == 1)
+	{
+		setJson_average(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
 
-	setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(1, jsonSendBuffer);
-	mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalPrevious) == 1)
+	{
+		setJson_totalPrevious(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
 }
 
 
@@ -327,7 +343,7 @@ static void mylog(char ch, void *param)
 
 /*Set JSON Functions*/
 //WS Specs
-static void setJson_wsSpec(char *buffer)
+static void setJson_wsSpecAndStreamStatus(char *buffer)
 {
 	//Start
 	sprintf(buffer,"{");
@@ -338,33 +354,52 @@ static void setJson_wsSpec(char *buffer)
 		if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Inactive)
 		{
 			sprintf(tempBuff,"\"wsSpec_flometerType\":\"inactive\",");
+			strcat(buffer, tempBuff);	
+
+			sprintf(tempBuff,"\"st%u_status\":\"Inactive\",", i+1);
+			strcat(buffer, tempBuff);
 		}
 		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Pulse_Meter)
 		{
 			sprintf(tempBuff,"\"wsSpec_flometerType\":\"pulseMeter\",");
+			strcat(buffer, tempBuff);	
+
+			sprintf(tempBuff,"\"st%u_status\":\"Enable (Turbine)\",", i+1);
+			strcat(buffer, tempBuff);
 		}
 		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Diff_Pressure_meter)
 		{
 			sprintf(tempBuff,"\"wsSpec_flometerType\":\"DiffPressMeter\",");
+			strcat(buffer, tempBuff);	
+
+			sprintf(tempBuff,"\"st%u_status\":\"Enable (Orifice)\",", i+1);
+			strcat(buffer, tempBuff);
 		}
 		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Ultrasonic)
 		{
 			sprintf(tempBuff,"\"wsSpec_flometerType\":\"ultrasonic\",");
+			strcat(buffer, tempBuff);	
+
+			sprintf(tempBuff,"\"st%u_status\":\"Enable (Ultrasonic)\",", i+1);
+			strcat(buffer, tempBuff);
 		}
 		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Current_input)
 		{
 			sprintf(tempBuff,"\"wsSpec_flometerType\":\"currentInput\",");
-		}
+			strcat(buffer, tempBuff);	
 
-		strcat(buffer, tempBuff);	
+			sprintf(tempBuff,"\"st%u_status\":\"Enable (Current Input)\",", i+1);
+			strcat(buffer, tempBuff);
+		}
 		
+
 		//Fluid And Fluid Type
 		if(gParamFromHmi.Setting.SetupStream[i].Fluid.fluid == Stream_Gasses)
 		{
 			sprintf(tempBuff,"\"wsSpec_fluid\":\"gasses\",");
 			strcat(buffer, tempBuff);
 
-			sprintf(tempBuff,"\"wsSpec_fluidType\":\"naturalGas\"");
+			sprintf(tempBuff,"\"wsSpec_fluidType\":\"naturalGas\",");
 			strcat(buffer, tempBuff);
 		}
 		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Liquid)
@@ -372,7 +407,7 @@ static void setJson_wsSpec(char *buffer)
 			sprintf(tempBuff,"\"wsSpec_fluid\":\"liquid\",");
 			strcat(buffer, tempBuff);
 
-			sprintf(tempBuff,"\"wsSpec_fluidType\":\"gasoil\"");
+			sprintf(tempBuff,"\"wsSpec_fluidType\":\"gasoil\",");
 			strcat(buffer, tempBuff);
 		}
 		else if(gParamFromHmi.Setting.SetupStream[i].flowMeterType == Stream_Water)
@@ -380,11 +415,14 @@ static void setJson_wsSpec(char *buffer)
 			sprintf(tempBuff,"\"wsSpec_fluid\":\"water\",");
 			strcat(buffer, tempBuff);
 
-			sprintf(tempBuff,"\"wsSpec_fluidType\":\"none\"");
+			sprintf(tempBuff,"\"wsSpec_fluidType\":\"none\",");
 			strcat(buffer, tempBuff);
 		}
 	}
 	
+	//Remove Last , in json
+	buffer[strlen(buffer)-1] = '\0';
+
 	//End
 	strcat(buffer,"}");
 }
@@ -434,18 +472,21 @@ static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowE
 	strcat(buffer, tempBuff);
 
 	//Output Calculation
-	if(gParamFromHmi.Setting.SetupStream[streaNumAtZero].flowMeterType == Stream_Gasses)
+	if(gParamFromHmi.Setting.SetupStream[streaNumAtZero].Fluid.fluid == Stream_Gasses)
 	{
 		sprintf(tempBuff,"\"st%u_conversionFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].conversion_c_factor);
 		strcat(buffer, tempBuff);
 
-		sprintf(tempBuff,"\"st%u_compressibilityFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streaNumAtZero].zFactor);
+		sprintf(tempBuff,"\"st%u_zFactor\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streaNumAtZero].zFactor);
 		strcat(buffer, tempBuff);
 	
 		sprintf(tempBuff,"\"st%u_density\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].density);
 		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_densityBase\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.General[streaNumAtZero].pb);
+		strcat(buffer, tempBuff);
 	}
-	else if(gParamFromHmi.Setting.SetupStream[streaNumAtZero].flowMeterType == Stream_Gasses)
+	else if(gParamFromHmi.Setting.SetupStream[streaNumAtZero].Fluid.fluid == Stream_Liquid)
 	{
 		sprintf(tempBuff,"\"st%u_cpl\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.Liquid[streaNumAtZero].cpl);
 		strcat(buffer, tempBuff);
@@ -454,6 +495,9 @@ static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowE
 		strcat(buffer, tempBuff);
 	
 		sprintf(tempBuff,"\"st%u_density\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].density);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_densityBase\":\"%.4lf\",",streamNum,gParamFromHmi.Data.AllOutputCalc.General[streaNumAtZero].pb);
 		strcat(buffer, tempBuff);
 	}
 
@@ -467,9 +511,139 @@ static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowE
 	sprintf(tempBuff,"\"st%u_energyError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_energy_error);
 	strcat(buffer, tempBuff);
 
-	sprintf(tempBuff,"\"st%u_massError\":\"%.2lf\"",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_mass_error);
+	sprintf(tempBuff,"\"st%u_massError\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.Now[streaNumAtZero].total_mass_error);
 	strcat(buffer, tempBuff);
+
+	//Remove Last , in json
+	buffer[strlen(buffer)-1] = '\0';
 
 	//End
 	strcat(buffer,"}");
 }
+
+
+static void setJson_average(uint8_t streamNum, char *buffer)	//streamNum at one
+{
+	uint8_t streaNumAtZero = streamNum - 1;
+
+
+	//Start
+	sprintf(buffer,"{");
+
+	//Average Minutes
+	sprintf(tempBuff,"\"st%u_avrMin_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].uvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].cvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].energy_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].mass_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_pressure\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].pressure);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_temperature\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].temperature);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_signalFlowMeter\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].signal_flowmeter);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMin_density\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMin[streaNumAtZero].mass_density);
+	strcat(buffer, tempBuff);
+
+
+	//Average Hour
+	sprintf(tempBuff,"\"st%u_avrHour_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].uvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].cvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].energy_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].mass_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_pressure\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].pressure);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_temperature\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].temperature);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_signalFlowMeter\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].signal_flowmeter);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrHour_density\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastHour[streaNumAtZero].mass_density);
+	strcat(buffer, tempBuff);
+
+
+	//Average Daily
+	sprintf(tempBuff,"\"st%u_avrDay_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].uvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].cvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].energy_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].mass_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_pressure\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].pressure);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_temperature\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].temperature);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_signalFlowMeter\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].signal_flowmeter);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrDay_density\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastDay[streaNumAtZero].mass_density);
+	strcat(buffer, tempBuff);
+
+
+	//Average Month
+	sprintf(tempBuff,"\"st%u_avrMonth_uvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].uvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_cvol\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].cvol_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_energy\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].energy_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_mass\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].mass_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_pressure\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].pressure);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_temperature\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].temperature);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_signalFlowMeter\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].signal_flowmeter);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_avrMonth_density\":\"%.2lf\",",streamNum,gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streaNumAtZero].mass_density);
+	strcat(buffer, tempBuff);
+
+
+	//Remove Last , in json
+	buffer[strlen(buffer)-1] = '\0';
+
+	//End
+	strcat(buffer,"}");
+}
+
+
+static void setJson_totalPrevious(uint8_t streamNum, char *buffer)	//streamNum at one
+{
+
+}
+

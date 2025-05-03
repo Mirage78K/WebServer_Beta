@@ -103,7 +103,8 @@ typedef struct
     WsConn_PacketSendFromHMI_Header_t HeaderSt;
     WsConn_SendDataFromHmi_State_t statePacket;
 
-    WsConn_Param_Data_Flow_t AllDataFlow;
+	WsConn_Param_Data_Flow_t AllDataFlow;
+    WsConn_Param_Data_OutputCalc_t AllOutputCalc;
     WsConn_Param_Data_ClockAndData_t ClockAndData;
 
     uint16_t footer;
@@ -124,6 +125,7 @@ typedef struct
     WsConn_PacketSendFromHMI_Header_t HeaderSt;
     WsConn_SendSettingFromHmi_State_t statePacket;
 
+    WsConn_Param_Setting_SetupStream_t SetupStream[WSCONN_PARAM_STREAM_NUM];
 
     uint16_t footer;
 }WsConn_SendSettingFromHmi_All_t;

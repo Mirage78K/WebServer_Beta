@@ -251,6 +251,7 @@ static int analyzeAndGetDataFromHmi()     //out = 0(OK), 1(header or footer erro
 
     //Get Data
     memcpy(&gParamFromHmi.Data.AllDataFlow, &HmiConnLocal.HmiHandle.HmiRecvData.AllDataFlow, sizeof(gParamFromHmi.Data.AllDataFlow));
+    memcpy(&gParamFromHmi.Data.AllOutputCalc, &HmiConnLocal.HmiHandle.HmiRecvData.AllOutputCalc, sizeof(gParamFromHmi.Data.AllOutputCalc));
     memcpy(&gParamFromHmi.Data.ClockAndData, &HmiConnLocal.HmiHandle.HmiRecvData.ClockAndData, sizeof(gParamFromHmi.Data.ClockAndData));
 
     return 0;
@@ -277,7 +278,7 @@ static int analyzeAndGetSettingFromHmi()  //out = 0(OK), 1(header or footer erro
     //check range (if needed)
 
     //Get Data
-    //Nothing yet
+    memcpy(&gParamFromHmi.Setting.SetupStream, &HmiConnLocal.HmiHandle.HmiRecvSetting.SetupStream, sizeof(gParamFromHmi.Setting.SetupStream));
 
     return 0;
 }
@@ -341,7 +342,7 @@ static void sendPacketToHmi()
 
     HAL_UART_Transmit_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.dataSendBuffer, HMICONN_PACKET_SEND_LENGTH);
 
-//    HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
+    HAL_GPIO_TogglePin(LED_BOARD_GPIO_Port, LED_BOARD_Pin);
 }
 
 

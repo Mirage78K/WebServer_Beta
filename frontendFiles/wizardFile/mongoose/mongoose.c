@@ -3104,7 +3104,8 @@ void mg_hexdump(const void *buf, size_t len) {
   for (i = 0; i < len; i++) {
     if ((i % 16) == 0) {
       // Print buffered ascii chars
-      if (i > 0) logs("  ", 2), logs((char *) ascii, 16), logc('\n'), alen = 0;
+      if (i > 0)
+        logs("  ", 2), logs((char *) ascii, 16), logs("\r\n", 2), alen = 0;
       // Print hex address, then \t
       logc(nibble((i >> 12) & 15)), logc(nibble((i >> 8) & 15)),
           logc(nibble((i >> 4) & 15)), logc('0'), logs("   ", 3);
@@ -3114,7 +3115,7 @@ void mg_hexdump(const void *buf, size_t len) {
     ascii[alen++] = ISPRINT(p[i]) ? p[i] : '.';        // Add to the ascii buf
   }
   while (alen < 16) logs("   ", 3), ascii[alen++] = ' ';
-  logs("  ", 2), logs((char *) ascii, 16), logc('\n');
+  logs("  ", 2), logs((char *) ascii, 16), logs("\r\n", 2);
 }
 
 #ifdef MG_ENABLE_LINES
@@ -5360,6 +5361,7 @@ void mg_mgr_poll(struct mg_mgr *mgr, int ms) {
     if (s->twclosure &&
         (!c->is_tls || (c->rtls.len == 0 && mg_tls_pending(c) == 0)))
       c->is_closing = 1;
+    if (c->is_draining && c->send.len == 0) c->is_closing = 1;
     if (c->is_closing) close_conn(c);
   }
   (void) ms;
@@ -8393,10 +8395,14 @@ void mg_multicast_add(struct mg_connection *c, char *ip) {
   // TODO(): prvAllowIPPacketIPv4()
 #else
   // lwIP, Unix, Windows, Zephyr(, AzureRTOS ?)
+#if MG_ENABLE_LWIP && !LWIP_IGMP
+  MG_ERROR(("LWIP_IGMP not defined, no multicast support"));
+#else
   struct ip_mreq mreq;
   mreq.imr_multiaddr.s_addr = inet_addr(ip);
   mreq.imr_interface.s_addr = mg_htonl(INADDR_ANY);
   setsockopt(FD(c), IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *) &mreq, sizeof(mreq));
+#endif
 #endif
 }
 
