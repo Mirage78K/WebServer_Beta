@@ -20,6 +20,7 @@
 typedef struct
 {
     bool clientIsSet;
+    uint8_t wsSendStageStep;
 
     struct
     {
@@ -118,6 +119,8 @@ int websocketHandle_addNewWebsocketConnection(struct mg_connection *c)
     WebsocketHandle.WebSocketClient[clientIndex].ConnectionInfo.portClient = c->rem.port;
 
     memset(&WebsocketHandle.WebSocketClient[clientIndex].LastBuffer, 0, sizeof(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer));
+
+    WebsocketHandle.WebSocketClient[clientIndex].wsSendStageStep = 0;
 
     WebsocketHandle.WebSocketClient[clientIndex].clientIsSet = true;
 
@@ -357,6 +360,84 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
 }
 
 
+int websocketHandle_getWsSendStageStep(struct mg_connection *c)     //if error return negative value
+{
+    uint8_t tIpV4[4];
+    uint16_t tPort;
+    bool clientFound = false;
+    uint8_t clientIndex = 0;
+
+    tIpV4[0] = c->rem.ip[0];
+    tIpV4[1] = c->rem.ip[1];
+    tIpV4[2] = c->rem.ip[2];
+    tIpV4[3] = c->rem.ip[3];
+
+    tPort = c->rem.port;
+
+
+    for (uint8_t i = 0; i < LIST_CLIENT_MAX_CLIENT; i++)
+    {
+        if(tPort == WebsocketHandle.WebSocketClient[i].ConnectionInfo.portClient)
+        {
+            if(memcmp(tIpV4, WebsocketHandle.WebSocketClient[i].ConnectionInfo.ipV4, sizeof(tIpV4)) == 0)
+            {
+                clientFound = true;
+                clientIndex = i;
+                break;
+            }
+        }
+    }
+
+
+    if(clientFound == true)
+    {
+        return  (int)WebsocketHandle.WebSocketClient[clientIndex].wsSendStageStep;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+int websocketHandle_setWsSendStageStep(struct mg_connection *c, uint8_t stepValue)
+{
+    uint8_t tIpV4[4];
+    uint16_t tPort;
+    bool clientFound = false;
+    uint8_t clientIndex = 0;
+
+    tIpV4[0] = c->rem.ip[0];
+    tIpV4[1] = c->rem.ip[1];
+    tIpV4[2] = c->rem.ip[2];
+    tIpV4[3] = c->rem.ip[3];
+
+    tPort = c->rem.port;
+
+    
+    for (uint8_t i = 0; i < LIST_CLIENT_MAX_CLIENT; i++)
+    {
+        if(tPort == WebsocketHandle.WebSocketClient[i].ConnectionInfo.portClient)
+        {
+            if(memcmp(tIpV4, WebsocketHandle.WebSocketClient[i].ConnectionInfo.ipV4, sizeof(tIpV4)) == 0)
+            {
+                clientFound = true;
+                clientIndex = i;
+                break;
+            }
+        }
+    }
+
+
+    if(clientFound == true)
+    {
+        WebsocketHandle.WebSocketClient[clientIndex].wsSendStageStep = stepValue;
+        return  0;
+    }
+    else
+    {
+        return -1;
+    }
+}
 
 
 /*hash functions*/

@@ -43,6 +43,8 @@ int websocketHandle_addNewWebsocketConnection(struct mg_connection *c);
 int websocketHandle_removeWebsocketConnection(struct mg_connection *c);
 int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataType_e NewDataType);
 
+int websocketHandle_getWsSendStageStep(struct mg_connection *c);
+int websocketHandle_setWsSendStageStep(struct mg_connection *c, uint8_t stepValue);
 
 
 #endif /* USER_WEBSOCKETHANDLE_H_ */

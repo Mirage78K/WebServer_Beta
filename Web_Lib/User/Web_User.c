@@ -68,6 +68,14 @@ static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowE
 static void setJson_average(uint8_t streamNum, char *buffer);
 static void setJson_totalPrevious(uint8_t streamNum, char *buffer);
 
+static int wsSend_stage0(struct mg_connection *c);
+static int wsSend_stage1(struct mg_connection *c);
+static int wsSend_stage2(struct mg_connection *c);
+static int wsSend_stage3(struct mg_connection *c);
+static int wsSend_stage4(struct mg_connection *c);
+
+
+
 
 
 void webUser_taskHandler_webServer(void *arg)
@@ -125,6 +133,16 @@ static void userInit()
 /*Websocket handle functions*/
 static void ws_1000(struct mg_connection *c)
 {
+	int wsSendStepStage;
+
+
+	wsSendStepStage = websocketHandle_getWsSendStageStep(c);
+	if(wsSendStepStage == (-1))
+	{
+		//Never happen in noraml
+		return;
+	}
+
 	//send ws spec
 	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_WsSpec) == 1)
 	{
@@ -133,64 +151,53 @@ static void ws_1000(struct mg_connection *c)
 	}
 
 
-	//send stream 1
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalAndFlow) == 1)
+	while (1)
 	{
-		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(1 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+		if(wsSendStepStage == 0)
+		{
+			wsSendStepStage = 1;
+			wsSend_stage0(c);	//break anyway
+			break;
+		}
+
+		if(wsSendStepStage == 1)
+		{
+			wsSendStepStage = 2;
+			if(wsSend_stage1(c) == 1)
+			{
+				break;
+			}
+		}
+
+		if(wsSendStepStage == 2)
+		{
+			wsSendStepStage = 3;
+			if(wsSend_stage2(c) == 1)
+			{
+				break;
+			}
+		}
+
+		if(wsSendStepStage == 3)
+		{
+			wsSendStepStage = 4;
+			if(wsSend_stage3(c) == 1)
+			{
+				break;
+			}
+		}
+
+		if(wsSendStepStage == 4)
+		{
+			wsSendStepStage = 0;
+			if(wsSend_stage4(c) == 1)
+			{
+				break;
+			}
+		}
 	}
 
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1Average) == 1)
-	{
-		setJson_average(1 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalPrevious) == 1)
-	{
-		setJson_totalPrevious(1 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-
-	//send stream 2
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2TotalAndFlow) == 1)
-	{
-		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(2 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2Average) == 1)
-	{
-		setJson_average(2 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2TotalPrevious) == 1)
-	{
-		setJson_totalPrevious(2 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-
-	//send stream 3
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3TotalAndFlow) == 1)
-	{
-		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(3 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3Average) == 1)
-	{
-		setJson_average(3 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
-
-	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3TotalPrevious) == 1)
-	{
-		setJson_totalPrevious(3 ,jsonSendBuffer);
-		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
-	}
+	websocketHandle_setWsSendStageStep(c, (uint8_t)wsSendStepStage);
 }
 
 
@@ -198,6 +205,145 @@ static void ws_500(struct mg_connection *c)
 {
 	NULL;
 }
+
+
+/*Stages*/
+static int wsSend_stage0(struct mg_connection *c)
+{
+	/**
+	 * 1- stream 1 , 2 , 3 data and flow
+	*/
+
+	bool dataChange = false;
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalAndFlow) == 1)
+	{
+		dataChange = true;
+		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2TotalAndFlow) == 1)
+	{
+		dataChange = true;
+		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(2 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3TotalAndFlow) == 1)
+	{
+		dataChange = true;
+		setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(3 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+	
+	if(dataChange == true)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+static int wsSend_stage1(struct mg_connection *c)
+{
+	/**
+	 * 1- stream 1 , 2 , 3 average
+	*/
+
+	bool dataChange = false;
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1Average) == 1)
+	{
+		dataChange = true;
+		setJson_average(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2Average) == 1)
+	{
+		dataChange = true;
+		setJson_average(2 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3Average) == 1)
+	{
+		dataChange = true;
+		setJson_average(3 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(dataChange == true)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+static int wsSend_stage2(struct mg_connection *c)
+{
+	/**
+	 * 1- stream 1 , 2 , 3 total previous
+	*/
+
+	bool dataChange = false;
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1TotalPrevious) == 1)
+	{
+		dataChange = true;
+		setJson_totalPrevious(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2TotalPrevious) == 1)
+	{
+		dataChange = true;
+		setJson_totalPrevious(2 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3TotalPrevious) == 1)
+	{
+		dataChange = true;
+		setJson_totalPrevious(3 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(dataChange == true)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+static int wsSend_stage3(struct mg_connection *c)
+{
+	/**
+	 * 1- ws spec
+	 * 2- total param stram 1 and 2 and 3
+	*/
+
+	return 0;
+}
+
+static int wsSend_stage4(struct mg_connection *c)
+{
+	/**
+	 * 1- system
+	*/
+
+	return 0;
+}
+
 
 
 /*add thirdparty function*/
