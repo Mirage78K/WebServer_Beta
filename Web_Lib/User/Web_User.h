@@ -13,7 +13,7 @@
 #include "mongoose.h"
 
 
-#define WEB_USER_MAX_CLIENT		10
+#define WEB_USER_MAX_CLIENT		6
 
 
 typedef struct

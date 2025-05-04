@@ -62,6 +62,7 @@ static void checkPhyHandle();
 static uint16_t readPhy(uint8_t addr, uint8_t reg);
 static void mylog(char ch, void *param);
 
+static inline int numconns(struct mg_mgr *mgr);
 
 static void setJson_wsSpecAndStreamStatus(char *buffer);
 static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer);
@@ -328,8 +329,7 @@ static int wsSend_stage2(struct mg_connection *c)
 static int wsSend_stage3(struct mg_connection *c)
 {
 	/**
-	 * 1- ws spec
-	 * 2- total param stram 1 and 2 and 3
+	 * 1- param stream 1 and 2 and 3
 	*/
 
 	return 0;
@@ -345,10 +345,17 @@ static int wsSend_stage4(struct mg_connection *c)
 }
 
 
-
+int connNumberTest = 0;
 /*add thirdparty function*/
 int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data)		//if return == 0 then countinue
 {
+	if(ev == MG_EV_ACCEPT)
+	{
+		if (numconns(c->mgr) > WEB_USER_MAX_CLIENT)
+		{
+		      c->is_draining = 1;
+		}
+	}
 	if(ev == MG_EV_WS_OPEN)
 	{
 		websocketHandle_addNewWebsocketConnection(c);
@@ -360,6 +367,14 @@ int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data)	
 	}
 
 	return 0;
+}
+
+/*Connection Liit*/
+static inline int numconns(struct mg_mgr *mgr)
+{
+  int n = 0;
+  for (struct mg_connection *t = mgr->conns; t != NULL; t = t->next) n++;
+  return n;
 }
 
 //fisrt call userInit then call this function

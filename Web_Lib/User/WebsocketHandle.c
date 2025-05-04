@@ -13,7 +13,7 @@
 #include "parameter.h"
 
 
-#define LIST_CLIENT_MAX_CLIENT		(WEB_USER_MAX_CLIENT - 2)
+#define LIST_CLIENT_MAX_CLIENT		(WEB_USER_MAX_CLIENT+2) //+2 for insure
 
 
 
