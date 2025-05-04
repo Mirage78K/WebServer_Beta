@@ -30,9 +30,21 @@ typedef struct
     struct
     {
         uint8_t hashData_wsSepc[32];
+
+        //Stream 1
         uint8_t hashData_st1TotalAndFlowAndErrorAndOutCalc[32];
         uint8_t hashData_st1Average[32];
         uint8_t hashData_st1TotalPrevious[32];
+
+        //Stream 2
+        uint8_t hashData_st2TotalAndFlowAndErrorAndOutCalc[32];
+        uint8_t hashData_st2Average[32];
+        uint8_t hashData_st2TotalPrevious[32];
+
+        //Stream 3
+        uint8_t hashData_st3TotalAndFlowAndErrorAndOutCalc[32];
+        uint8_t hashData_st3Average[32];
+        uint8_t hashData_st3TotalPrevious[32];
     }LastBuffer;
     
 }WebSocketClient_t;
@@ -57,9 +69,9 @@ SHA256_CTX Sha256Ctx;
 
 /*Function Prototypes*/
 static void hashDataType_wsSpec(uint8_t *outputHash);
-static void hashDataType_st1TotalAndFlow(uint8_t *outputHash);
-static void hashDataType_st1Average(uint8_t *outputHash);
-static void hashDataType_st1TotalPrevious(uint8_t *outputHash);
+static void hashDataType_st1TotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_st1Average(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_st1TotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero);
 
 
 
@@ -216,7 +228,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
 
     //Stream 1
     case WebsocketHandle_DataType_St1TotalAndFlow:
-        hashDataType_st1TotalAndFlow(newSha256);
+        hashDataType_st1TotalAndFlow(newSha256, 1-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalAndFlowAndErrorAndOutCalc, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -229,7 +241,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St1Average:
-        hashDataType_st1Average(newSha256);
+        hashDataType_st1Average(newSha256, 1-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Average, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -242,7 +254,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St1TotalPrevious:
-        hashDataType_st1TotalPrevious(newSha256);
+        hashDataType_st1TotalPrevious(newSha256, 1-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalPrevious, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -257,13 +269,83 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
 
     //Stream 2
     case WebsocketHandle_DataType_St2TotalAndFlow:
-        NULL;
+        hashDataType_st1TotalAndFlow(newSha256, 2-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2TotalAndFlowAndErrorAndOutCalc, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2TotalAndFlowAndErrorAndOutCalc, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St2Average:
+        hashDataType_st1Average(newSha256, 2-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Average, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Average, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St2TotalPrevious:
+        hashDataType_st1TotalPrevious(newSha256, 2-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2TotalPrevious, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2TotalPrevious, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
         break;
 
 
     //Stream 3
     case WebsocketHandle_DataType_St3TotalAndFlow:
-        NULL;
+        hashDataType_st1TotalAndFlow(newSha256, 3-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalAndFlowAndErrorAndOutCalc, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalAndFlowAndErrorAndOutCalc, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St3Average:
+        hashDataType_st1Average(newSha256, 3-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Average, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Average, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St3TotalPrevious:
+        hashDataType_st1TotalPrevious(newSha256, 3-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalPrevious, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalPrevious, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
         break;
 
 
@@ -293,50 +375,50 @@ static void hashDataType_wsSpec(uint8_t *outputHash)    //check for all streams
 }
 
 
-static void hashDataType_st1TotalAndFlow(uint8_t *outputHash)
+static void hashDataType_st1TotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
-	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[0], sizeof(gParamFromHmi.Data.AllDataFlow.Now[0]));
+	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero]));
 
-    if(gParamFromHmi.Setting.SetupStream[0].Fluid.fluid == Stream_Gasses)
+    if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses)
     {
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[0].conversion_c_factor, sizeof(gParamFromHmi.Data.AllDataFlow.Now[0].conversion_c_factor));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[0].zFactor, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[0].zFactor));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[0].density, sizeof(gParamFromHmi.Data.AllDataFlow.Now[0].density));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[0].pb, sizeof(gParamFromHmi.Data.AllOutputCalc.General[0].pb));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero].conversion_c_factor, sizeof(gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero].conversion_c_factor));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].zFactor, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].zFactor));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero].density, sizeof(gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero].density));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].pb, sizeof(gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].pb));
     }
-    else if(gParamFromHmi.Setting.SetupStream[0].Fluid.fluid == Stream_Liquid)
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Liquid)
     {
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.Liquid[0].cpl, sizeof(gParamFromHmi.Data.AllOutputCalc.Liquid[0].cpl));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.Liquid[0].ctl, sizeof(gParamFromHmi.Data.AllOutputCalc.Liquid[0].ctl));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[0].density, sizeof(gParamFromHmi.Data.AllDataFlow.Now[0].density));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[0].pb, sizeof(gParamFromHmi.Data.AllOutputCalc.General[0].pb));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.Liquid[streamNumAtZero].cpl, sizeof(gParamFromHmi.Data.AllOutputCalc.Liquid[streamNumAtZero].cpl));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.Liquid[streamNumAtZero].ctl, sizeof(gParamFromHmi.Data.AllOutputCalc.Liquid[streamNumAtZero].ctl));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero].density, sizeof(gParamFromHmi.Data.AllDataFlow.Now[streamNumAtZero].density));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].pb, sizeof(gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].pb));
     }
 
 	sha256_final(&Sha256Ctx, outputHash);
 }
 
 
-static void hashDataType_st1Average(uint8_t *outputHash)
+static void hashDataType_st1Average(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
-	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastMin[0], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastMin[0]));
-    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastHour[0], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastHour[0]));
-    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastDay[0], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastDay[0]));
-    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastMonth[0], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastMonth[0]));
+	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastMin[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastMin[streamNumAtZero]));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastHour[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastHour[streamNumAtZero]));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastDay[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastDay[streamNumAtZero]));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.AverageLastMonth[streamNumAtZero]));
 
 	sha256_final(&Sha256Ctx, outputHash);
 }
 
 
-static void hashDataType_st1TotalPrevious(uint8_t *outputHash)
+static void hashDataType_st1TotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
-	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.TotalPreviousDay[0], sizeof(gParamFromHmi.Data.AllDataFlow.TotalPreviousDay[0]));
-    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.TotalPreviousMonth[0], sizeof(gParamFromHmi.Data.AllDataFlow.TotalPreviousMonth[0]));
+	sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.TotalPreviousDay[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.TotalPreviousDay[streamNumAtZero]));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllDataFlow.TotalPreviousMonth[streamNumAtZero], sizeof(gParamFromHmi.Data.AllDataFlow.TotalPreviousMonth[streamNumAtZero]));
 
 	sha256_final(&Sha256Ctx, outputHash);
 }

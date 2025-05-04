@@ -25,9 +25,13 @@ typedef enum
 
     //Stream 2
     WebsocketHandle_DataType_St2TotalAndFlow,
+    WebsocketHandle_DataType_St2Average,
+    WebsocketHandle_DataType_St2TotalPrevious,
 
     //Stream 3
     WebsocketHandle_DataType_St3TotalAndFlow,
+    WebsocketHandle_DataType_St3Average,
+    WebsocketHandle_DataType_St3TotalPrevious,
 
     //System
 }WebsocketHandle_DataType_e;
