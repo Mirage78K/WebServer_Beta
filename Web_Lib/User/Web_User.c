@@ -356,6 +356,7 @@ int webUser_myFuncInHttpHandler(struct mg_connection *c, int ev, void *ev_data)	
 		      c->is_draining = 1;
 		}
 	}
+
 	if(ev == MG_EV_WS_OPEN)
 	{
 		websocketHandle_addNewWebsocketConnection(c);
