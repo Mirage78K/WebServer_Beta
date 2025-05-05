@@ -34,8 +34,11 @@ typedef struct
 
         //Stream 1
         uint8_t hashData_st1TotalAndFlowAndErrorAndOutCalc[32];
+        uint8_t hashData_st1Param_var[32];
         uint8_t hashData_st1Average[32];
         uint8_t hashData_st1TotalPrevious[32];
+        uint8_t hashData_st1Param_const[32];
+        uint8_t hashData_st1Param_gas21x[32];
 
         //Stream 2
         uint8_t hashData_st2TotalAndFlowAndErrorAndOutCalc[32];
@@ -505,3 +508,42 @@ static void hashDataType_st1TotalPrevious(uint8_t *outputHash, uint8_t streamNum
 }
 
 
+static void hashDataType_st1ParamVar(uint8_t *outputHash, uint8_t streamNumAtZero)
+{
+	sha256_init(&Sha256Ctx);
+
+
+    if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
+    {
+        //Density and compressibility exist in output calc
+
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].isentropicExponent, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].isentropicExponent));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].reynoldNumber, sizeof(gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].reynoldNumber));
+    }
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses)    //fluid gasoil
+    {
+        //cpl and ctl and density exist in output calc
+    }
+
+    //flowmeter gasoild
+	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Diff_Pressure_meter)
+    {
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor));
+    }
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
+    {
+
+    }
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Current_input)
+    {
+
+    }
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Ultrasonic)
+    {
+        //Nothing
+    }
+
+	sha256_final(&Sha256Ctx, outputHash);
+}

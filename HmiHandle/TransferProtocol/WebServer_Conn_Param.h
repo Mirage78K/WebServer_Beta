@@ -89,20 +89,20 @@ typedef struct
 	// float Hvol;
 	// float Hmass;
 	float pb;
-	// float reynoldNumber;
+	float reynoldNumber;
 }WsConn_Param_Data_OutputCalc_General_t;
 typedef struct
 {
 	float zFactor;
 	float zFactorBase;
-	// float molarMass;
+	float molarMass;
 	// float internalEnergy;
 	// float entalpy;
 	// float entropy;
 	// float isochoricHeatCapacity;
 	// float isobaricHeatCapacity;
 	// float gibbsEnergy;
-	// float isentropicExponent;
+	float isentropicExponent;
 	// float jouleThomsonCoefficient;
 	// float d2pPerdRho2;
 	// float d2pPerdt;
@@ -110,9 +110,9 @@ typedef struct
 	// float energy;
 	// float molarDensity;
 	// float orificeCoefficeint;
-	// float epansionFactor;
-	// float speedOfFluid;
-	// float speedOfSound;
+	float epansionFactor;
+	float speedOfFluid;
+	float speedOfSound;
 }WsConn_Param_Data_OutputCalc_NaturalGas_t;
 typedef struct
 {

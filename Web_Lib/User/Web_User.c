@@ -212,7 +212,7 @@ static void ws_500(struct mg_connection *c)
 static int wsSend_stage0(struct mg_connection *c)
 {
 	/**
-	 * 1- stream 1 , 2 , 3 data and flow
+	 * 1- stream 1 , 2 , 3 data and flow and Pram Var
 	*/
 
 	bool dataChange = false;
