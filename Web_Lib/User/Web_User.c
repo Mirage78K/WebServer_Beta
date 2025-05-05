@@ -78,7 +78,7 @@ static int wsSend_stage1(struct mg_connection *c);
 static int wsSend_stage2(struct mg_connection *c);
 static int wsSend_stage3(struct mg_connection *c);
 static int wsSend_stage4(struct mg_connection *c);
-
+static int wsSend_stage5(struct mg_connection *c);
 
 
 
@@ -194,8 +194,17 @@ static void ws_1000(struct mg_connection *c)
 
 		if(wsSendStepStage == 4)
 		{
-			wsSendStepStage = 0;
+			wsSendStepStage = 5;
 			if(wsSend_stage4(c) == 1)
+			{
+				break;
+			}
+		}
+
+		if(wsSendStepStage == 5)
+		{
+			wsSendStepStage = 0;
+			if(wsSend_stage5(c) == 1)
 			{
 				break;
 			}
@@ -396,10 +405,49 @@ static int wsSend_stage3(struct mg_connection *c)
 static int wsSend_stage4(struct mg_connection *c)
 {
 	/**
-	 * 1- system
+	 * 1- 21 gas parameter
 	*/
 
 	return 0;
+}
+
+static int wsSend_stage5(struct mg_connection *c)
+{
+	/**
+	 * 1- 21 gas parameter
+	*/
+
+	bool dataChange = false;
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1ParamGas21X) == 1)
+	{
+		dataChange = true;
+		setJson_paramGas21x(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2ParamGas21X) == 1)
+	{
+		dataChange = true;
+		setJson_paramGas21x(2 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3ParamGas21X) == 1)
+	{
+		dataChange = true;
+		setJson_paramGas21x(3 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(dataChange == true)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 
@@ -1189,6 +1237,8 @@ static void setJson_paramGas21x(uint8_t streamNum, char *buffer)	//streamNum at 
 {
 	uint8_t streamNumAtZero = streamNum - 1;
 
+	double pIndex[22];
+
 
 	//Start
 	sprintf(buffer,"{");
@@ -1196,9 +1246,40 @@ static void setJson_paramGas21x(uint8_t streamNum, char *buffer)	//streamNum at 
 	//General
 	//Nothing
 
+	pIndex[0] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[1] * 100;
+	pIndex[1] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[4] * 100;
+	pIndex[2] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[5] * 100;
+	pIndex[3] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[6] * 100;
+	pIndex[4] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[7] * 100;
+	pIndex[5] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[8] * 100;
+	pIndex[6] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[9] * 100;
+	pIndex[7] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[10] * 100;
+	pIndex[8] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[11] * 100;
+	pIndex[9] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[12] * 100;
+	pIndex[10] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[13] * 100;
+	pIndex[11] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[2] * 100;
+	pIndex[12] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[3] * 100;
+	pIndex[13] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[15] * 100;
+	pIndex[14] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[16] * 100;
+	pIndex[15] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[17] * 100;
+	pIndex[16] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[18] * 100;
+	pIndex[17] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[19] * 100;
+	pIndex[18] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[21] * 100;
+	pIndex[19] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[20] * 100;
+	pIndex[20] = gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x[14] * 100;
 
+	//calculate Total
+	pIndex[21] = 0;
+	for (uint8_t i = 0; i < 21; i++)
+	{
+		pIndex[21] += pIndex[i]; 
+	}
 
-
+	for(uint8_t i = 0; i < 22; i++)
+	{
+		sprintf(tempBuff,"\"st%u_paramGas21x_%u\":\"%.4f\",",streamNum,i+1,pIndex[i]);
+		strcat(buffer, tempBuff);
+	}
 
 	//Remove Last , in json
 	size_t jsonSize = strlen(buffer);
