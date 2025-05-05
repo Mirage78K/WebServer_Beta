@@ -16,7 +16,7 @@ const WebUiStringHmi_t WebUiStringHmi =
     {
         {"Gas"},
         {"Gas oil"},
-        {"NONE"}    //Not used
+        {"Water"}    //Not used
     },
 
     .Parameter.unitVolume=
@@ -30,8 +30,10 @@ const WebUiStringHmi_t WebUiStringHmi =
 
     .Parameter.floweterType=
     {
-        {"Orifice meter"},
+        {"No Flowmeter"},
         {"Pulse meter"},
+        {"Orifice meter"},
+        {"Ultrasonic"},
         {"Current meter"}
     },
 

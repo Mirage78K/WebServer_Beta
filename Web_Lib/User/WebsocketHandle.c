@@ -667,6 +667,7 @@ static void hashDataType_stParamConst(uint8_t *outputHash, uint8_t streamNumAtZe
 	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Diff_Pressure_meter)
     {
         sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.dinamic_viscosity, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.dinamic_viscosity));
         sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter));
     }
     else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
@@ -694,8 +695,9 @@ static void hashDataType_stParamVar(uint8_t *outputHash, uint8_t streamNumAtZero
 
     if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
     {
-        //Density and compressibility exist in output calc
+        //Density and Density Base and compressibility exist in output calc
 
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].zFactorBase, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].zFactorBase));
         sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].molarMass, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].molarMass));
         sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid));
         sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound));
@@ -711,6 +713,7 @@ static void hashDataType_stParamVar(uint8_t *outputHash, uint8_t streamNumAtZero
 	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Diff_Pressure_meter)
     {
         sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].orificeCoefficeint, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].orificeCoefficeint));
     }
     else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
     {

@@ -14,6 +14,7 @@
 #include "DebugLog.h"
 #include "HMI_Connextion.h"
 #include "WebsocketHandle.h"
+#include "WebUi_String.h"
 
 
 #define ETH_PHY_ADDRESS						0
@@ -69,6 +70,8 @@ static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowE
 static void setJson_average(uint8_t streamNum, char *buffer);
 static void setJson_totalPrevious(uint8_t streamNum, char *buffer);
 static void setJson_paramVar(uint8_t streamNum, char *buffer);
+static void setJson_paramConst(uint8_t streamNum, char *buffer);
+static void setJson_paramGas21x(uint8_t streamNum, char *buffer);
 
 static int wsSend_stage0(struct mg_connection *c);
 static int wsSend_stage1(struct mg_connection *c);
@@ -357,7 +360,37 @@ static int wsSend_stage3(struct mg_connection *c)
 	 * 1- param stream 1 and 2 and 3
 	*/
 
-	return 0;
+	bool dataChange = false;
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St1ParamConst) == 1)
+	{
+		dataChange = true;
+		setJson_paramConst(1 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St2ParamConst) == 1)
+	{
+		dataChange = true;
+		setJson_paramConst(2 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_St3ParamConst) == 1)
+	{
+		dataChange = true;
+		setJson_paramConst(3 ,jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+	if(dataChange == true)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 static int wsSend_stage4(struct mg_connection *c)
@@ -967,6 +1000,9 @@ static void setJson_paramVar(uint8_t streamNum, char *buffer)	//streamNum at one
 	
 	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
 	{
+		sprintf(tempBuff,"\"st%u_paramGa_zFactorBase\":\"%.4f\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].zFactorBase);
+		strcat(buffer, tempBuff);
+
 		sprintf(tempBuff,"\"st%u_paramGa_mW\":\"%.4f\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].molarMass);
 		strcat(buffer, tempBuff);
 		
@@ -992,6 +1028,9 @@ static void setJson_paramVar(uint8_t streamNum, char *buffer)	//streamNum at one
     {
 		sprintf(tempBuff,"\"st%u_paramOr_expansionFactor\":\"%.4f\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor);
 		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_orificeMeterCoefficient\":\"%.4f\",",streamNum,gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].orificeCoefficeint);
+		strcat(buffer, tempBuff);
     }
     else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
     {
@@ -1015,5 +1054,160 @@ static void setJson_paramVar(uint8_t streamNum, char *buffer)	//streamNum at one
 	
 	//End
 	strcat(buffer,"}");
+}
+
+
+static void setJson_paramConst(uint8_t streamNum, char *buffer)	//streamNum at one
+{
+	uint8_t streamNumAtZero = streamNum - 1;
+
+
+	//Start
+	sprintf(buffer,"{");
+
+	//General
+	sprintf(tempBuff,"\"st%u_paramGe_fluidName\":\"%s\",",streamNum,WebUiStringHmi.Parameter.fluidName[gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid]);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_unitVolume\":\"%s\",",streamNum,WebUiStringHmi.Parameter.unitVolume[gParamFromHmi.Setting.SetupStream[streamNumAtZero].UnitTotal.volume]);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_flowmeterType\":\"%s\",",streamNum,WebUiStringHmi.Parameter.floweterType[gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType]);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_unitFlowrate\":\"%s\",",streamNum,WebUiStringHmi.Parameter.unitFlowrate[gParamFromHmi.Setting.SetupStream[streamNumAtZero].UnitTotal.volume_flowrate]);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_minFlow\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.min_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_maxFlow\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.max_flowrate);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_minor\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.minor_keypad);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_major\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.maxor_keypad);
+	strcat(buffer, tempBuff);
+
+	sprintf(tempBuff,"\"st%u_paramGe_airPressure\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.air_pressure);
+	strcat(buffer, tempBuff);
+
+
+	//Fluid
+	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
+	{
+		sprintf(tempBuff,"\"st%u_paramGa_pressureBase\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.pressure_base);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramGa_temperatureBase\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.temperature_base);
+		strcat(buffer, tempBuff);
+	}
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Liquid)    //fluid gasoil
+    {
+        //Nothing
+    }
+
+
+	//Flowmeter
+	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Diff_Pressure_meter)
+	{
+		sprintf(tempBuff,"\"st%u_paramOr_pipeDiameter\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_orificeDiameter\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.constricted_diameter);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_beta\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.diameter_ratio);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_dynamicViscosity\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.dinamic_viscosity);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_temperatureReferencePipe\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.pipe_reference_temp);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_temperatureReferenceOrifice\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.orifice_reference_temp);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_pipeMaterial\":\"%s\",",streamNum,WebUiStringHmi.Orifice.pipeMaterial[gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.pipe_material]);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_orificeMaterial\":\"%s\",",streamNum,WebUiStringHmi.Orifice.orificeMaterial[gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.orifice_material]);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_tapConfigure\":\"%s\",",streamNum,WebUiStringHmi.Orifice.tapConfig[gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.tap_config]);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramOr_pressureTap\":\"%s\",",streamNum,WebUiStringHmi.Orifice.pressureTap[gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter.pressure_upstream]);
+		strcat(buffer, tempBuff);
+	}
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
+	{
+		sprintf(tempBuff,"\"st%u_paramTu_pulseInput\":\"%u\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.pulse_meter.pulse_channel);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramTu_pipeDiameter\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramTu_kFactor\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.pulse_meter.k_factor);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramTu_mFactor\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.pulse_meter.m_factor);
+		strcat(buffer, tempBuff);
+	}
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Current_input)
+	{
+		sprintf(tempBuff,"\"st%u_paramCu_typeInput\":\"%s\",",streamNum,WebUiStringHmi.CurrentFlowMeter.typeInput[gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.current_input.type_of_input]);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramCu_flowrateChannel\":\"%u\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.current_input.flowrate_channel);
+		strcat(buffer, tempBuff);
+
+		sprintf(tempBuff,"\"st%u_paramCu_flowrateKeypadValue\":\"%.4f\",",streamNum,gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.current_input.keypad_value);
+		strcat(buffer, tempBuff);
+	}
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Ultrasonic)
+	{
+		//Nothing
+	}
+
+
+	//Remove Last , in json
+	size_t jsonSize = strlen(buffer);
+	if(jsonSize > 1)
+	{
+		buffer[jsonSize-1] = '\0';
+	}
+	
+	//End
+	strcat(buffer,"}");
+}
+
+
+static void setJson_paramGas21x(uint8_t streamNum, char *buffer)	//streamNum at one
+{
+	uint8_t streamNumAtZero = streamNum - 1;
+
+
+	//Start
+	sprintf(buffer,"{");
+
+	//General
+	//Nothing
+
+
+
+
+
+	//Remove Last , in json
+	size_t jsonSize = strlen(buffer);
+	if(jsonSize > 1)
+	{
+		buffer[jsonSize-1] = '\0';
+	}
+	
+	//End
+	strcat(buffer,"}");	
 }
 

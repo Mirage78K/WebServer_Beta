@@ -109,7 +109,7 @@ typedef struct
 	// float speceficGravity;
 	// float energy;
 	// float molarDensity;
-	// float orificeCoefficeint;
+	float orificeCoefficeint;
 	float epansionFactor;
 	float speedOfFluid;
 	float speedOfSound;
