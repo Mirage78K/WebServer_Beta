@@ -34,9 +34,9 @@ typedef struct
 
         //Stream 1
         uint8_t hashData_st1TotalAndFlowAndErrorAndOutCalc[32];
-        uint8_t hashData_st1Param_var[32];
         uint8_t hashData_st1Average[32];
         uint8_t hashData_st1TotalPrevious[32];
+        uint8_t hashData_st1Param_var[32];
         uint8_t hashData_st1Param_const[32];
         uint8_t hashData_st1Param_gas21x[32];
 
@@ -44,11 +44,17 @@ typedef struct
         uint8_t hashData_st2TotalAndFlowAndErrorAndOutCalc[32];
         uint8_t hashData_st2Average[32];
         uint8_t hashData_st2TotalPrevious[32];
+        uint8_t hashData_st2Param_var[32];
+        uint8_t hashData_st2Param_const[32];
+        uint8_t hashData_st2Param_gas21x[32];
 
         //Stream 3
         uint8_t hashData_st3TotalAndFlowAndErrorAndOutCalc[32];
         uint8_t hashData_st3Average[32];
         uint8_t hashData_st3TotalPrevious[32];
+        uint8_t hashData_st3Param_var[32];
+        uint8_t hashData_st3Param_const[32];
+        uint8_t hashData_st3Param_gas21x[32];
     }LastBuffer;
     
 }WebSocketClient_t;
@@ -73,10 +79,12 @@ SHA256_CTX Sha256Ctx;
 
 /*Function Prototypes*/
 static void hashDataType_wsSpec(uint8_t *outputHash);
-static void hashDataType_st1TotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero);
-static void hashDataType_st1Average(uint8_t *outputHash, uint8_t streamNumAtZero);
-static void hashDataType_st1TotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero);
-
+static void hashDataType_stTotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_stAverage(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_stTotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_stParamConst(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_stParamVar(uint8_t *outputHash, uint8_t streamNumAtZero);
+static void hashDataType_stParamGas21x(uint8_t *outputHash, uint8_t streamNumAtZero);
 
 
 
@@ -234,7 +242,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
 
     //Stream 1
     case WebsocketHandle_DataType_St1TotalAndFlow:
-        hashDataType_st1TotalAndFlow(newSha256, 1-1);
+        hashDataType_stTotalAndFlow(newSha256, 1-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalAndFlowAndErrorAndOutCalc, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -247,7 +255,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St1Average:
-        hashDataType_st1Average(newSha256, 1-1);
+        hashDataType_stAverage(newSha256, 1-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Average, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -260,7 +268,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St1TotalPrevious:
-        hashDataType_st1TotalPrevious(newSha256, 1-1);
+        hashDataType_stTotalPrevious(newSha256, 1-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1TotalPrevious, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -272,10 +280,49 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         }
         break;
 
+    case WebsocketHandle_DataType_St1ParamVar:
+        hashDataType_stParamVar(newSha256, 1-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Param_var, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Param_var, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St1ParamConst:
+        hashDataType_stParamConst(newSha256, 1-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Param_const, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Param_const, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St1ParamGas21X:
+        hashDataType_stParamGas21x(newSha256, 1-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Param_gas21x, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st1Param_gas21x, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
 
     //Stream 2
     case WebsocketHandle_DataType_St2TotalAndFlow:
-        hashDataType_st1TotalAndFlow(newSha256, 2-1);
+        hashDataType_stTotalAndFlow(newSha256, 2-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2TotalAndFlowAndErrorAndOutCalc, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -288,7 +335,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St2Average:
-        hashDataType_st1Average(newSha256, 2-1);
+        hashDataType_stAverage(newSha256, 2-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Average, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -301,7 +348,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St2TotalPrevious:
-        hashDataType_st1TotalPrevious(newSha256, 2-1);
+        hashDataType_stTotalPrevious(newSha256, 2-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2TotalPrevious, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -313,10 +360,49 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         }
         break;
 
+    case WebsocketHandle_DataType_St2ParamVar:
+        hashDataType_stParamVar(newSha256, 2-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Param_var, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Param_var, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St2ParamConst:
+        hashDataType_stParamConst(newSha256, 2-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Param_const, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Param_const, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St2ParamGas21X:
+        hashDataType_stParamGas21x(newSha256, 2-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Param_gas21x, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st2Param_gas21x, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
 
     //Stream 3
     case WebsocketHandle_DataType_St3TotalAndFlow:
-        hashDataType_st1TotalAndFlow(newSha256, 3-1);
+        hashDataType_stTotalAndFlow(newSha256, 3-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalAndFlowAndErrorAndOutCalc, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -329,7 +415,7 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St3Average:
-        hashDataType_st1Average(newSha256, 3-1);
+        hashDataType_stAverage(newSha256, 3-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Average, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
@@ -342,11 +428,50 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         break;
 
     case WebsocketHandle_DataType_St3TotalPrevious:
-        hashDataType_st1TotalPrevious(newSha256, 3-1);
+        hashDataType_stTotalPrevious(newSha256, 3-1);
         if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalPrevious, sizeof(newSha256)) != 0)
         {
             outputRes = 1;
             memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3TotalPrevious, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+        case WebsocketHandle_DataType_St3ParamVar:
+        hashDataType_stParamVar(newSha256, 3-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Param_var, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Param_var, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St3ParamConst:
+        hashDataType_stParamConst(newSha256, 3-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Param_const, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Param_const, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+        break;
+
+    case WebsocketHandle_DataType_St3ParamGas21X:
+        hashDataType_stParamGas21x(newSha256, 3-1);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Param_gas21x, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_st3Param_gas21x, newSha256, sizeof(newSha256));
         }
         else
         {
@@ -459,7 +584,7 @@ static void hashDataType_wsSpec(uint8_t *outputHash)    //check for all streams
 }
 
 
-static void hashDataType_st1TotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero)
+static void hashDataType_stTotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
@@ -484,7 +609,7 @@ static void hashDataType_st1TotalAndFlow(uint8_t *outputHash, uint8_t streamNumA
 }
 
 
-static void hashDataType_st1Average(uint8_t *outputHash, uint8_t streamNumAtZero)
+static void hashDataType_stAverage(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
@@ -497,7 +622,7 @@ static void hashDataType_st1Average(uint8_t *outputHash, uint8_t streamNumAtZero
 }
 
 
-static void hashDataType_st1TotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero)
+static void hashDataType_stTotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
@@ -508,37 +633,50 @@ static void hashDataType_st1TotalPrevious(uint8_t *outputHash, uint8_t streamNum
 }
 
 
-static void hashDataType_st1ParamVar(uint8_t *outputHash, uint8_t streamNumAtZero)
+static void hashDataType_stParamConst(uint8_t *outputHash, uint8_t streamNumAtZero)
 {
 	sha256_init(&Sha256Ctx);
 
 
+    //General
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid_type, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid_type));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].UnitTotal.volume, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].UnitTotal.volume));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].UnitTotal.volume_flowrate, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].UnitTotal.volume_flowrate));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.min_flowrate, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.min_flowrate));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.max_flowrate, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.max_flowrate));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.minor_keypad, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.minor_keypad));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.maxor_keypad, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.maxor_keypad));
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.air_pressure, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.air_pressure));
+
+
     if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
     {
-        //Density and compressibility exist in output calc
+        //Density and Density base and compressibility and compressibility base exist in output calc
 
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].isentropicExponent, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].isentropicExponent));
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].reynoldNumber, sizeof(gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].reynoldNumber));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.pressure_base, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.pressure_base));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.temperature_base, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.temperature_base));
     }
-	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses)    //fluid gasoil
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Liquid)    //fluid gasoil
     {
-        //cpl and ctl and density exist in output calc
+        //Nothing
     }
 
-    //flowmeter gasoild
+    //flowmeter
 	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Diff_Pressure_meter)
     {
-        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.diff_pressure_meter));
     }
     else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
     {
-
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].General.pipe_diameter));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.pulse_meter, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.pulse_meter));
     }
     else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Current_input)
     {
-
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.current_input, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Flowmeter.current_input));
     }
     else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Ultrasonic)
     {
@@ -547,3 +685,64 @@ static void hashDataType_st1ParamVar(uint8_t *outputHash, uint8_t streamNumAtZer
 
 	sha256_final(&Sha256Ctx, outputHash);
 }
+
+
+static void hashDataType_stParamVar(uint8_t *outputHash, uint8_t streamNumAtZero)
+{
+	sha256_init(&Sha256Ctx);
+
+
+    if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
+    {
+        //Density and compressibility exist in output calc
+
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].molarMass, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].molarMass));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfFluid));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].speedOfSound));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].isentropicExponent, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].isentropicExponent));
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].reynoldNumber, sizeof(gParamFromHmi.Data.AllOutputCalc.General[streamNumAtZero].reynoldNumber));
+    }
+	else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Liquid)    //fluid gasoil
+    {
+        //cpl and ctl and density exist in output calc
+    }
+
+    //flowmeter
+	if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Diff_Pressure_meter)
+    {
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor, sizeof(gParamFromHmi.Data.AllOutputCalc.NaturalGas[streamNumAtZero].epansionFactor));
+    }
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Pulse_Meter)
+    {
+        //Nothing
+    }
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Current_input)
+    {
+        //Nothing
+    }
+    else if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].flowMeterType == Stream_Ultrasonic)
+    {
+        //Nothing
+    }
+
+	sha256_final(&Sha256Ctx, outputHash);
+}
+
+
+static void hashDataType_stParamGas21x(uint8_t *outputHash, uint8_t streamNumAtZero)
+{
+    if(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.fluid == Stream_Gasses) //Fluid Gas
+    {
+        sha256_init(&Sha256Ctx);
+
+        sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x, sizeof(gParamFromHmi.Setting.SetupStream[streamNumAtZero].Fluid.natural_gas._x));
+
+        sha256_final(&Sha256Ctx, outputHash);
+    }
+    else
+    {
+        memset(outputHash, 0, 32 * sizeof(uint8_t));
+    }
+}
+
+

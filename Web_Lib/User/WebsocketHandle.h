@@ -22,16 +22,25 @@ typedef enum
     WebsocketHandle_DataType_St1TotalAndFlow,
     WebsocketHandle_DataType_St1Average,
     WebsocketHandle_DataType_St1TotalPrevious,
+    WebsocketHandle_DataType_St1ParamVar,
+    WebsocketHandle_DataType_St1ParamConst,
+    WebsocketHandle_DataType_St1ParamGas21X,
 
     //Stream 2
     WebsocketHandle_DataType_St2TotalAndFlow,
     WebsocketHandle_DataType_St2Average,
     WebsocketHandle_DataType_St2TotalPrevious,
+    WebsocketHandle_DataType_St2ParamVar,
+    WebsocketHandle_DataType_St2ParamConst,
+    WebsocketHandle_DataType_St2ParamGas21X,
 
     //Stream 3
     WebsocketHandle_DataType_St3TotalAndFlow,
     WebsocketHandle_DataType_St3Average,
     WebsocketHandle_DataType_St3TotalPrevious,
+    WebsocketHandle_DataType_St3ParamVar,
+    WebsocketHandle_DataType_St3ParamConst,
+    WebsocketHandle_DataType_St3ParamGas21X,
 
     //System
 }WebsocketHandle_DataType_e;
