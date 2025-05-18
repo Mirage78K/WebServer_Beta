@@ -21,3 +21,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		hmiConn_UartRxDmaISR();
 	}
 }
+
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+	//if error oucure dma will be disable
+	if(huart->Instance == HMICONN_UART_HANDLER.Instance)
+	{
+		hmiConn_UartRxErrorISR();
+	}
+}
+

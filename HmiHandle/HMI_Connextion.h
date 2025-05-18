@@ -61,6 +61,7 @@ void hmiConn_initialBeforeTask();
 
 //ISR
 void hmiConn_UartRxDmaISR();
+void hmiConn_UartRxErrorISR();
 
 //we can use getter but do not change datas
 int hmiConn_GetAllParam(gParamFromHmi_t *AllParam);

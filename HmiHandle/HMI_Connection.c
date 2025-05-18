@@ -48,6 +48,7 @@ typedef struct
     struct
     {
         bool dmaReceiveFull;
+        bool uartRxError;
     }Flag;
     
     
@@ -127,6 +128,12 @@ void hmiConn_UartRxDmaISR()
 }
 
 
+void hmiConn_UartRxErrorISR()
+{
+	HmiConnLocal.Flag.uartRxError = true;
+}
+
+
 /*Local Function*/
 static int receivePolling()     //return 1 means packet received
 {
@@ -135,14 +142,6 @@ static int receivePolling()     //return 1 means packet received
     uint32_t byteReceived;
 
     byteReceived = dataReceivedDmaCnt();
-
-    //if dma receive is full
-    if(HmiConnLocal.Flag.dmaReceiveFull == true)
-    {
-        HmiConnLocal.Flag.dmaReceiveFull = false;
-        memset(HmiConnLocal.HmiHandle.packetReceiveBuffer, 0, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
-        HAL_UART_Receive_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
-    }
 
     if(byteReceived > sizeof(WsConn_PacketSendFromHMI_Header_t))    //header packet is 12 byte
     {
@@ -161,12 +160,20 @@ static int receivePolling()     //return 1 means packet received
         }
         else
         {
-            memset(HmiConnLocal.HmiHandle.packetReceiveBuffer, 0, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
             hmiUartRxDmaStop(&HMICONN_UART_HANDLER);
+            memset(HmiConnLocal.HmiHandle.packetReceiveBuffer, 0, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
             HAL_UART_Receive_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
         }
     }
 
+
+    //if dma receive is full
+	if(HmiConnLocal.Flag.dmaReceiveFull == true)
+	{
+		HmiConnLocal.Flag.dmaReceiveFull = false;
+		memset(HmiConnLocal.HmiHandle.packetReceiveBuffer, 0, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
+		HAL_UART_Receive_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
+	}
 
     return res;
 }
@@ -229,6 +236,12 @@ static void getDataFromHmiRs232Poll()
     uint8_t crcValue;
     int res;
 
+
+    if(HmiConnLocal.Flag.uartRxError == true)
+    {
+    	HAL_UART_Receive_DMA(&HMICONN_UART_HANDLER, HmiConnLocal.HmiHandle.packetReceiveBuffer, sizeof(HmiConnLocal.HmiHandle.packetReceiveBuffer));
+    	HmiConnLocal.Flag.uartRxError = false;
+    }
 
     res = receivePolling();
     if(res != 1)
@@ -324,7 +337,8 @@ static void getDataFromHmiRs232Poll()
 
 static int analyzeAndGetDataFromHmi()     //out = 0(OK), 1(header or footer error), 2(Packet Length error), 3(version error)
 {
-    memcpy(&HmiConnLocal.HmiHandle.HmiRecvData, HmiConnLocal.HmiHandle.packetReceiveBuffer, HmiConnLocal.HmiHandle.recvPacketSize - 1);    //-1 for crc
+    if((HmiConnLocal.HmiHandle.recvPacketSize - 1) <= (sizeof(HmiConnLocal.HmiHandle.HmiRecvData)))
+        memcpy(&HmiConnLocal.HmiHandle.HmiRecvData, HmiConnLocal.HmiHandle.packetReceiveBuffer, HmiConnLocal.HmiHandle.recvPacketSize - 1);    //-1 for crc
     
     if((HmiConnLocal.HmiHandle.HmiRecvData.HeaderSt.header != WS_HMI_TRANSFER_FROM_HMI_HEADER) || (HmiConnLocal.HmiHandle.HmiRecvData.footer != WS_HMI_TRANSFER_FROM_HMI_FOOTER))
     {
@@ -352,7 +366,8 @@ static int analyzeAndGetDataFromHmi()     //out = 0(OK), 1(header or footer erro
 
 static int analyzeAndGetSettingFromHmi()  //out = 0(OK), 1(header or footer error), 2(Packet Length error), 3(version error)
 {
-    memcpy(&HmiConnLocal.HmiHandle.HmiRecvSetting, HmiConnLocal.HmiHandle.packetReceiveBuffer, HmiConnLocal.HmiHandle.recvPacketSize - 1);    //-1 for crc
+    if((HmiConnLocal.HmiHandle.recvPacketSize - 1) <= (sizeof(HmiConnLocal.HmiHandle.HmiRecvSetting)))
+        memcpy(&HmiConnLocal.HmiHandle.HmiRecvSetting, HmiConnLocal.HmiHandle.packetReceiveBuffer, HmiConnLocal.HmiHandle.recvPacketSize - 1);    //-1 for crc
     
     if((HmiConnLocal.HmiHandle.HmiRecvSetting.HeaderSt.header != WS_HMI_TRANSFER_FROM_HMI_HEADER) || (HmiConnLocal.HmiHandle.HmiRecvSetting.footer != WS_HMI_TRANSFER_FROM_HMI_FOOTER))
     {
