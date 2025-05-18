@@ -15,6 +15,7 @@
 
 
 #define HMICONN_UART_HANDLER		                    huart1
+#define HMICONN_UART_DMA_RX								hdma_usart1_rx
 
 #define HMICONN_CRC_SIZE                                1       //CRC is last byte in buffer
 
@@ -59,7 +60,7 @@ void hmiConn_taskHandler_connection(void *arg);
 void hmiConn_initialBeforeTask();
 
 //ISR
-void hmiConn_UartExRxDmaISR(uint16_t size);
+void hmiConn_UartRxDmaISR();
 
 //we can use getter but do not change datas
 int hmiConn_GetAllParam(gParamFromHmi_t *AllParam);
