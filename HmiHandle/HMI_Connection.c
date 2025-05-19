@@ -267,6 +267,7 @@ static void getDataFromHmiRs232Poll()
                 res = analyzeAndGetDataFromHmi();
                 if(res == 0)
                 {
+                	TestWs.dataRecvCnt++;
                     HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_OK;
                     gParamFromHmi.StateFlag.isDataReceived = true;
                 }
@@ -288,6 +289,7 @@ static void getDataFromHmiRs232Poll()
                 res = analyzeAndGetSettingFromHmi();
                 if(res == 0)
                 {
+                	TestWs.settingRecvCnt++;
                     HmiConnLocal.HmiHandle.packetRecvSatate = HMI_REC_PACKET_STATE_OK;
                     gParamFromHmi.StateFlag.isSettingReceived = true;
                 }
