@@ -14,10 +14,21 @@ extern UART_HandleTypeDef HMICONN_UART_HANDLER;
 
 
 
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if(huart->Instance == HMICONN_UART_HANDLER.Instance)
 	{
-		hmiConn_UartExRxDmaISR(Size);
+		hmiConn_UartRxDmaISR();
 	}
 }
+
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+	//if error oucure dma will be disable
+	if(huart->Instance == HMICONN_UART_HANDLER.Instance)
+	{
+		hmiConn_UartRxErrorISR();
+	}
+}
+

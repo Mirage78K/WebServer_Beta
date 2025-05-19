@@ -36,7 +36,12 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+typedef struct
+{
+	uint32_t settingRecvCnt;
+	uint32_t dataRecvCnt;
+}TestWs_t;
+extern TestWs_t TestWs;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

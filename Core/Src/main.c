@@ -64,6 +64,8 @@ uint8_t ucHeap[ configTOTAL_HEAP_SIZE ] __attribute__((section(".ccmram")));
 
 extern TaskHandle_t WebServer_TaskHandler;
 extern TaskHandle_t hmiConn_TaskHandle;
+
+TestWs_t TestWs;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
