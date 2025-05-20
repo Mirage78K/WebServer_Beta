@@ -1,0 +1,90 @@
+{
+  "version": "1.0.2", 
+  "api": {
+    "modules": {
+      "type": "custom", 
+      "read_level": 0, 
+      "write_level": 0, 
+      "value":       ["module1","module2","module3"]
+    }, 
+    "local": {
+      "type": "local", 
+      "read_level": 0, 
+      "write_level": 0, 
+      "attributes": {
+        "module": {"type": "string", "value": "module2", "size": 20}
+      }
+    }, 
+    "settings": {
+      "type": "data", 
+      "read_level": 0, 
+      "write_level": 0, 
+      "attributes": {
+        "module3_name": {"type": "string", "value": "bbbb", "size": 10}, 
+        "module2_name": {"type": "string", "value": "aaaa", "size": 10}, 
+        "module1_name": {"type": "string", "value": "Mod1Name", "size": 20}
+      }
+    }
+  }, 
+  "ui": {
+    "production": false, 
+    "brand": "Brand Name", 
+    "logo": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<svg viewBox=\"0 0 600 150\" xmlns=\"http://www.w3.org/2000/svg\">\n  <rect x=\"0\" y=\"0\" width=\"600\" height=\"150\" rx=\"20\" ry=\"20\" style=\"stroke: none; fill: #e1e5e9;\"/>\n  <text style=\"fill: #94A3B8; font-family: Arial, sans-serif; font-size: 92px;dominant-baseline: middle; text-anchor: middle; \" x=\"50%\" y=\"50%\">my logo</text>\n</svg>", 
+    "toolbar": {
+      "label": "My product console"
+    }, 
+    "theme": {
+    }, 
+    "pages": [
+      {"title": "Dashboard", "icon": "desktop", "level": 0, "classes": "page", "layout": [
+          {"classes": "container", "css": "gap: 0.5rem;\nflex-wrap: wrap;", "layout": [
+              {"type": "dropdown", "ref": "local.module", "options": "${modules}", "css": "flex: 0 0 auto;\nwidth: 6rem;"}
+            ]},
+          {"classes": "container", "css": "gap: 0.5rem;\nflex-wrap: wrap;", "layout": [
+              {"classes": "panel", "css": "flex: 0 0 auto;\nflex-basis: 0 0 auto;\nwidth: 18rem;\n${local.module == 'module1' ? '' : 'display:none;'}", "layout": [
+                  {"classes": "container", "css": "gap: 0.5rem;", "layout": [
+                      {"classes": "title", "format": "Module1 settings", "css": "height: 1.03125rem;"}
+                    ]},
+                  {"classes": "labeled", "layout": [
+                      {"classes": "label", "format": "Name"},
+                      {"type": "input", "ref": "settings.module1_name", "css": "flex: 0 0 auto;\nwidth: 8rem;"}
+                    ]},
+                  {"classes": "labeled", "css": "height: 1.564453125rem;\nmargin-top: 0.25rem;\njustify-content: end;", "layout": [
+                      {"type": "savebutton", "ref": "settings", "title": "save", "icon": "save"}
+                    ]}
+                ]},
+              {"classes": "panel", "css": "flex: 0 0 auto;\nflex-basis: 0 0 auto;\nwidth: 18rem;\n${local.module == 'module2' ? '' : 'display:none;'} ", "layout": [
+                  {"classes": "container", "css": "gap: 0.5rem;", "layout": [
+                      {"classes": "title", "format": "Module2 Settings"}
+                    ]},
+                  {"classes": "labeled", "layout": [
+                      {"classes": "label", "format": "Name"},
+                      {"type": "input", "ref": "settings.module2_name", "css": "flex: 0 0 auto;\nwidth: 8rem;"}
+                    ]},
+                  {"classes": "labeled", "css": "margin-top: 0.25rem;\njustify-content: end;", "layout": [
+                      {"type": "savebutton", "ref": "settings", "title": "save", "icon": "save"}
+                    ]}
+                ]},
+              {"classes": "panel", "css": "flex: 0 0 auto;\nflex-basis: 0 0 auto;\nwidth: 18rem;\n${local.module == 'module3' ? '' : 'display:none;'} ", "layout": [
+                  {"classes": "container", "css": "gap: 0.5rem;", "layout": [
+                      {"classes": "title", "format": "Module3 Settings"}
+                    ]},
+                  {"classes": "labeled", "layout": [
+                      {"classes": "label", "format": "Name"},
+                      {"type": "input", "ref": "settings.module3_name", "css": "flex: 0 0 auto;\nwidth: 8rem;"}
+                    ]},
+                  {"classes": "labeled", "css": "margin-top: 0.25rem;\njustify-content: end;", "layout": [
+                      {"type": "savebutton", "ref": "settings", "title": "save", "icon": "save"}
+                    ]}
+                ]}
+            ]}
+        ]}
+    ]
+  }, 
+  "http": {"http": true, "https": false, "ui": true, "login": false, "ca": ""}, 
+  "mqtt": {"enable": false, "url": "mqtt://broker.hivemq.com:1883", "ca": "", "rx": "{device_id}/rx", "tx": "{device_id}/tx"}, 
+  "dns": {"type": "default", "url": "udp://8.8.8.8:53", "captive": false}, 
+  "sntp": {"enable": false, "type": 0, "url": "udp://time.google.com:123", "interval": 3600}, 
+  "modbus": {"enable": false, "port": 502}, 
+  "build": {"board": "unix", "ide": "GCC+make", "rtos": "baremetal", "cores": [], "mode": "new"}
+}
