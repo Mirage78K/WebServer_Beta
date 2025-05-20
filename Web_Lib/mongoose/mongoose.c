@@ -4178,11 +4178,12 @@ void mg_mgr_init(struct mg_mgr *mgr) {
 
 struct connstate {
   uint32_t seq, ack;           // TCP seq/ack counters
-  uint64_t timer;              // TCP keep-alive / ACK timer
+  uint64_t timer;              // TCP timer (see 'ttype' below)
   uint32_t acked;              // Last ACK-ed number
   size_t unacked;              // Not acked bytes
+  uint16_t dmss;               // destination MSS (from TCP opts)
   uint8_t mac[6];              // Peer MAC address
-  uint8_t ttype;               // Timer type. 0: ack, 1: keep-alive
+  uint8_t ttype;               // Timer type:
 #define MIP_TTYPE_KEEPALIVE 0  // Connection is idle for long, send keepalive
 #define MIP_TTYPE_ACK 1        // Peer sent us data, we have to ack it soon
 #define MIP_TTYPE_ARP 2        // ARP resolve sent, waiting for response
@@ -4338,6 +4339,7 @@ static void settmout(struct mg_connection *c, uint8_t type) {
                : type == MIP_TTYPE_SYN ? MIP_TCP_SYN_MS
                : type == MIP_TTYPE_FIN ? MIP_TCP_FIN_MS
                                        : MIP_TCP_KEEPALIVE_MS;
+  if (s->ttype == MIP_TTYPE_FIN) return; // skip if 3-way closing
   s->timer = ifp->now + n;
   s->ttype = type;
   MG_VERBOSE(("%lu %d -> %llx", c->id, type, s->timer));
@@ -4686,17 +4688,17 @@ static void rx_udp(struct mg_tcpip_if *ifp, struct pkt *pkt) {
 static size_t tx_tcp(struct mg_tcpip_if *ifp, uint8_t *dst_mac, uint32_t dst_ip,
                      uint8_t flags, uint16_t sport, uint16_t dport,
                      uint32_t seq, uint32_t ack, const void *buf, size_t len) {
-#if 0
-  uint8_t opts[] = {2, 4, 5, 0xb4, 4, 2, 0, 0};  // MSS = 1460, SACK permitted
-  if (flags & TH_SYN) {
-    // Handshake? Set MSS
+  struct ip *ip;
+  struct tcp *tcp;
+  uint16_t opts[4 / 2];
+  if (flags & TH_SYN) {                 // Send MSS, RFC-9293 3.7.1
+    opts[0] = mg_htons(0x0204);         // RFC-9293 3.2
+    opts[1] = mg_htons(ifp->mtu - 40);  // RFC-6691
     buf = opts;
     len = sizeof(opts);
   }
-#endif
-  struct ip *ip =
-      tx_ip(ifp, dst_mac, 6, ifp->ip, dst_ip, sizeof(struct tcp) + len);
-  struct tcp *tcp = (struct tcp *) (ip + 1);
+  ip = tx_ip(ifp, dst_mac, 6, ifp->ip, dst_ip, sizeof(struct tcp) + len);
+  tcp = (struct tcp *) (ip + 1);
   memset(tcp, 0, sizeof(*tcp));
   if (buf != NULL && len) memmove(tcp + 1, buf, len);
   tcp->sport = sport;
@@ -4706,7 +4708,7 @@ static size_t tx_tcp(struct mg_tcpip_if *ifp, uint8_t *dst_mac, uint32_t dst_ip,
   tcp->flags = flags;
   tcp->win = mg_htons(MIP_TCP_WIN);
   tcp->off = (uint8_t) (sizeof(*tcp) / 4 << 4);
-  // if (flags & TH_SYN) tcp->off = 0x70;  // Handshake? header size 28 bytes
+  if (flags & TH_SYN) tcp->off += (uint8_t) (sizeof(opts) / 4 << 4);
 
   uint32_t cs = 0;
   uint16_t n = (uint16_t) (sizeof(*tcp) + len);
@@ -4740,6 +4742,7 @@ static struct mg_connection *accept_conn(struct mg_connection *lsn,
     return NULL;
   }
   struct connstate *s = (struct connstate *) (c + 1);
+  s->dmss = 536;     // assume default, RFC-9293 3.7.1
   s->seq = mg_ntohl(pkt->tcp->ack), s->ack = mg_ntohl(pkt->tcp->seq);
   memcpy(s->mac, pkt->eth->src, sizeof(s->mac));
   settmout(c, MIP_TTYPE_KEEPALIVE);
@@ -4793,10 +4796,11 @@ long mg_io_send(struct mg_connection *c, const void *buf, size_t len) {
   len = trim_len(c, len);
   if (c->is_udp) {
     tx_udp(ifp, s->mac, ifp->ip, c->loc.port, dst_ip, c->rem.port, buf, len);
-  } else {
-    size_t sent =
-        tx_tcp(ifp, s->mac, dst_ip, TH_PUSH | TH_ACK, c->loc.port, c->rem.port,
-               mg_htonl(s->seq), mg_htonl(s->ack), buf, len);
+  } else {  // TCP, cap to peer's MSS
+    size_t sent;
+    if (len > s->dmss) len = s->dmss;  // RFC-6691: reduce if sending opts
+    sent = tx_tcp(ifp, s->mac, dst_ip, TH_PUSH | TH_ACK, c->loc.port,
+                  c->rem.port, mg_htonl(s->seq), mg_htonl(s->ack), buf, len);
     if (sent == 0) {
       return MG_IO_WAIT;
     } else if (sent == (size_t) -1) {
@@ -4856,10 +4860,10 @@ static void read_conn(struct mg_connection *c, struct pkt *pkt) {
     }
     tx_tcp(c->mgr->ifp, s->mac, rem_ip, flags, c->loc.port, c->rem.port,
            mg_htonl(s->seq), mg_htonl(s->ack), "", 0);
-    if (pkt->pay.len == 0) return; // if no data, we're done
-  } else if (pkt->pay.len == 0) {  // this is an ACK
+    if (pkt->pay.len == 0) return;  // if no data, we're done
+  } else if (pkt->pay.len == 0) {   // this is an ACK
     if (s->fin_rcvd && s->ttype == MIP_TTYPE_FIN) s->twclosure = true;
-    return; // no data to process
+    return;  // no data to process
   } else if (seq != s->ack) {
     uint32_t ack = (uint32_t) (mg_htonl(pkt->tcp->seq) + pkt->pay.len);
     if (s->ack == ack) {
@@ -4869,11 +4873,11 @@ static void read_conn(struct mg_connection *c, struct pkt *pkt) {
       tx_tcp(c->mgr->ifp, s->mac, rem_ip, TH_ACK, c->loc.port, c->rem.port,
              mg_htonl(s->seq), mg_htonl(s->ack), "", 0);
     }
-    return; // drop it
+    return;  // drop it
   } else if (io->size - io->len < pkt->pay.len &&
              !mg_iobuf_resize(io, io->len + pkt->pay.len)) {
     mg_error(c, "oom");
-    return; // drop it
+    return;  // drop it
   }
   // Copy TCP payload into the IO buffer. If the connection is plain text,
   // we copy to c->recv. If the connection is TLS, this data is encrypted,
@@ -4909,6 +4913,25 @@ static void read_conn(struct mg_connection *c, struct pkt *pkt) {
   }
 }
 
+// process options (MSS)
+static void handle_opt(struct connstate *s, struct tcp *tcp) {
+  uint8_t *opts = (uint8_t *) (tcp + 1);
+  int len = 4 * ((int) (tcp->off >> 4) - (sizeof(*tcp) / 4));
+  s->dmss = 536;     // assume default, RFC-9293 3.7.1
+  while (len > 0) {  // RFC-9293 3.1 3.2
+    uint8_t kind = opts[0], optlen = 1;
+    if (kind != 1) {         // No-Operation
+      if (kind == 0) break;  // End of Option List
+      optlen = opts[1];
+      if (kind == 2 && optlen == 4)  // set received MSS
+        s->dmss = (uint16_t) (((uint16_t) opts[2] << 8) + opts[3]);
+    }
+    MG_INFO(("kind: %u, optlen: %u, len: %d\n", kind, optlen, len));
+    opts += optlen;
+    len -= optlen;
+  }
+}
+
 static void rx_tcp(struct mg_tcpip_if *ifp, struct pkt *pkt) {
   struct mg_connection *c = getpeer(ifp->mgr, pkt, false);
   struct connstate *s = c == NULL ? NULL : (struct connstate *) (c + 1);
@@ -4916,6 +4939,7 @@ static void rx_tcp(struct mg_tcpip_if *ifp, struct pkt *pkt) {
   MG_INFO(("%lu %hhu %d", c ? c->id : 0, pkt->tcp->flags, (int) pkt->pay.len));
 #endif
   if (c != NULL && c->is_connecting && pkt->tcp->flags == (TH_SYN | TH_ACK)) {
+    handle_opt(s, pkt->tcp);  // process options (MSS)
     s->seq = mg_ntohl(pkt->tcp->ack), s->ack = mg_ntohl(pkt->tcp->seq) + 1;
     tx_tcp_pkt(ifp, pkt, TH_ACK, pkt->tcp->ack, NULL, 0);
     c->is_connecting = 0;  // Client connected
@@ -4945,6 +4969,8 @@ static void rx_tcp(struct mg_tcpip_if *ifp, struct pkt *pkt) {
     if (c->is_accepted) mg_error(c, "peer RST");  // RFC-1122 4.2.2.13
     // ignore RST if not connected
   } else if (pkt->tcp->flags & TH_SYN) {
+    // TODO(): handle_opt(s, pkt->tcp);  // process options (MSS)
+    // At this point, s = NULL, there is no connection.
     // Use peer's source port as ISN, in order to recognise the handshake
     uint32_t isn = mg_htonl((uint32_t) mg_ntohs(pkt->tcp->sport));
     tx_tcp_pkt(ifp, pkt, TH_SYN | TH_ACK, isn, NULL, 0);
@@ -5200,7 +5226,7 @@ void mg_tcpip_init(struct mg_mgr *mgr, struct mg_tcpip_if *ifp) {
     MG_INFO(("MAC not set. Generated random: %M", mg_print_mac, ifp->mac));
   }
 
-  // Uf DHCP name is not set, use "mip"
+  // If DHCP name is not set, use "mip"
   if (ifp->dhcp_name[0] == '\0') {
     memcpy(ifp->dhcp_name, "mip", 4);
   }
@@ -5361,7 +5387,6 @@ void mg_mgr_poll(struct mg_mgr *mgr, int ms) {
     if (s->twclosure &&
         (!c->is_tls || (c->rtls.len == 0 && mg_tls_pending(c) == 0)))
       c->is_closing = 1;
-    if (c->is_draining && c->send.len == 0) c->is_closing = 1;
     if (c->is_closing) close_conn(c);
   }
   (void) ms;
@@ -5390,7 +5415,7 @@ bool mg_send(struct mg_connection *c, const void *buf, size_t len) {
 
 uint8_t mcast_addr[6] = {0x01, 0x00, 0x5e, 0x00, 0x00, 0xfb};
 void mg_multicast_add(struct mg_connection *c, char *ip) {
-  (void) ip; // ip4_mcastmac(mcast_mac, &ip);
+  (void) ip;  // ip4_mcastmac(mcast_mac, &ip);
   // TODO(): actual IP -> MAC; check database, update
   c->mgr->ifp->update_mac_hash_table = true;  // mark dirty
 }
@@ -5585,6 +5610,374 @@ bool mg_ota_end(void) {
   MG_DEBUG(("Finished ESP32 OTA, success: %d", s_ota_success));
   s_ota_update_partition = NULL;
   return s_ota_success;
+}
+
+#endif
+
+#ifdef MG_ENABLE_LINES
+#line 1 "src/ota_frdm.c"
+#endif
+
+
+
+
+#if MG_OTA == MG_OTA_FRDM
+
+MG_IRAM static bool mg_frdm_write(void *, const void *, size_t);
+static bool mg_frdm_swap(void);
+
+static struct mg_flash s_mg_flash_frdm = {(void *) 0x08000000,  // Start,
+                                          0x200000,             // Size
+                                          0x1000,               // Sector size
+                                          0x100,                // Align
+                                          mg_frdm_write,
+                                          mg_frdm_swap};
+
+struct mg_flexspi_lut_seq {
+  uint8_t seqNum;
+  uint8_t seqId;
+  uint16_t reserved;
+};
+
+struct mg_flexspi_mem_config {
+  uint32_t tag;
+  uint32_t version;
+  uint32_t reserved0;
+  uint8_t readSampleClkSrc;
+  uint8_t csHoldTime;
+  uint8_t csSetupTime;
+  uint8_t columnAddressWidth;
+  uint8_t deviceModeCfgEnable;
+  uint8_t deviceModeType;
+  uint16_t waitTimeCfgCommands;
+  struct mg_flexspi_lut_seq deviceModeSeq;
+  uint32_t deviceModeArg;
+  uint8_t configCmdEnable;
+  uint8_t configModeType[3];
+  struct mg_flexspi_lut_seq configCmdSeqs[3];
+  uint32_t reserved1;
+  uint32_t configCmdArgs[3];
+  uint32_t reserved2;
+  uint32_t controllerMiscOption;
+  uint8_t deviceType;
+  uint8_t sflashPadType;
+  uint8_t serialClkFreq;
+  uint8_t lutCustomSeqEnable;
+  uint32_t reserved3[2];
+  uint32_t sflashA1Size;
+  uint32_t sflashA2Size;
+  uint32_t sflashB1Size;
+  uint32_t sflashB2Size;
+  uint32_t csPadSettingOverride;
+  uint32_t sclkPadSettingOverride;
+  uint32_t dataPadSettingOverride;
+  uint32_t dqsPadSettingOverride;
+  uint32_t timeoutInMs;
+  uint32_t commandInterval;
+  uint16_t dataValidTime[2];
+  uint16_t busyOffset;
+  uint16_t busyBitPolarity;
+  uint32_t lookupTable[64];
+  struct mg_flexspi_lut_seq lutCustomSeq[12];
+  uint32_t reserved4[4];
+};
+
+struct mg_flexspi_nor_config {
+  struct mg_flexspi_mem_config memConfig;
+  uint32_t pageSize;
+  uint32_t sectorSize;
+  uint8_t ipcmdSerialClkFreq;
+  uint8_t isUniformBlockSize;
+  uint8_t isDataOrderSwapped;
+  uint8_t reserved0[1];
+  uint8_t serialNorType;
+  uint8_t needExitNoCmdMode;
+  uint8_t halfClkForNonReadCmd;
+  uint8_t needRestoreNoCmdMode;
+  uint32_t blockSize;
+  uint32_t flashStateCtx;
+  uint32_t reserve2[10];
+};
+
+struct mg_flexspi_nor_driver_interface {
+  uint32_t version;
+  uint32_t (*init)(uint32_t instance, struct mg_flexspi_nor_config *config);
+  uint32_t (*wait_busy)(uint32_t instance, struct mg_flexspi_nor_config *config,
+                        uint32_t address, bool keepState);
+  uint32_t (*page_program)(uint32_t instance,
+                           struct mg_flexspi_nor_config *config,
+                           uint32_t dstAddr, const uint32_t *src,
+                           bool keepState);
+  uint32_t (*erase_all)(uint32_t instance,
+                        struct mg_flexspi_nor_config *config);
+  uint32_t (*erase)(uint32_t instance, struct mg_flexspi_nor_config *config,
+                    uint32_t start, uint32_t length);
+  uint32_t (*erase_sector)(uint32_t instance,
+                           struct mg_flexspi_nor_config *config,
+                           uint32_t address);
+  uint32_t (*erase_block)(uint32_t instance,
+                          struct mg_flexspi_nor_config *config,
+                          uint32_t address);
+  uint32_t (*read)(uint32_t instance, struct mg_flexspi_nor_config *config,
+                   uint32_t *dst, uint32_t start, uint32_t bytes);
+  void (*config_clock)(uint32_t instance, uint32_t freqOption,
+                       uint32_t sampleClkMode);
+  uint32_t (*set_clock_source)(uint32_t clockSrc);
+  uint32_t (*get_config)(uint32_t instance,
+                         struct mg_flexspi_nor_config *config,
+                         uint32_t *option);
+  void (*hw_reset)(uint32_t instance, uint32_t reset_logic);
+  uint32_t (*xfer)(uint32_t instance, char *xfer);
+  uint32_t (*update_lut)(uint32_t instance, uint32_t seqIndex,
+                         const uint32_t *lutBase, uint32_t numberOfSeq);
+  uint32_t (*partial_program)(uint32_t instance,
+                              struct mg_flexspi_nor_config *config,
+                              uint32_t dstAddr, const uint32_t *src,
+                              uint32_t length, bool keepState);
+};
+
+#define MG_FLEXSPI_CFG_BLK_TAG (0x42464346UL)
+#define MG_FLEXSPI_BASE 0x40134000UL
+
+#define MG_CMD_SDR 0x01
+#define MG_RADDR_SDR 0x02
+#define MG_WRITE_SDR 0x08
+#define MG_READ_SDR 0x09
+#define MG_DUMMY_SDR 0x0C
+#define MG_STOP_EXE 0
+
+#define MG_FLEXSPI_1PAD 0
+#define MG_FLEXSPI_4PAD 2
+
+#define MG_FLEXSPI_LUT_OPERAND0(x) (((x) &0xFF) << 0)
+#define MG_FLEXSPI_LUT_NUM_PADS0(x) (((x) &0x3) << 8)
+#define MG_FLEXSPI_LUT_OPCODE0(x) (((x) &0x3F) << 10)
+#define MG_FLEXSPI_LUT_OPERAND1(x) (((x) &0xFF) << 16)
+#define MG_FLEXSPI_LUT_NUM_PADS1(x) (((x) &0x3) << 24)
+#define MG_FLEXSPI_LUT_OPCODE1(x) (((x) &0x3F) << 26)
+
+#define MG_FLEXSPI_LUT_SEQ(cmd0, pad0, op0, cmd1, pad1, op1)       \
+  (MG_FLEXSPI_LUT_OPERAND0(op0) | MG_FLEXSPI_LUT_NUM_PADS0(pad0) | \
+   MG_FLEXSPI_LUT_OPCODE0(cmd0) | MG_FLEXSPI_LUT_OPERAND1(op1) |   \
+   MG_FLEXSPI_LUT_NUM_PADS1(pad1) | MG_FLEXSPI_LUT_OPCODE1(cmd1))
+
+struct mg_flexspi_nor_config default_config = {
+    .memConfig =
+        {
+            .tag = MG_FLEXSPI_CFG_BLK_TAG,
+            .version = 0,
+            .readSampleClkSrc = 1,
+            .csHoldTime = 3,
+            .csSetupTime = 3,
+            .deviceModeCfgEnable = 1,
+            .deviceModeSeq = {.seqNum = 1, .seqId = 2},
+            .deviceModeArg = 0x0740,
+            .configCmdEnable = 0,
+            .deviceType = 0x1,
+            .sflashPadType = 4,
+            .serialClkFreq = 4,
+            .sflashA1Size = 0x4000000U,
+            .sflashA2Size = 0,
+            .sflashB1Size = 0,
+            .sflashB2Size = 0,
+            .lookupTable =
+                {
+                    [0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0xEB,
+                                           MG_RADDR_SDR, MG_FLEXSPI_4PAD, 0x18),
+                    [1] =
+                        MG_FLEXSPI_LUT_SEQ(MG_DUMMY_SDR, MG_FLEXSPI_4PAD, 0x06,
+                                           MG_READ_SDR, MG_FLEXSPI_4PAD, 0x04),
+                    [4 * 1 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x05,
+                                           MG_READ_SDR, MG_FLEXSPI_1PAD, 0x04),
+                    [4 * 2 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x01,
+                                           MG_WRITE_SDR, MG_FLEXSPI_1PAD, 0x02),
+                    [4 * 3 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x06,
+                                           MG_STOP_EXE, MG_FLEXSPI_1PAD, 0x00),
+                    [4 * 5 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x20,
+                                           MG_RADDR_SDR, MG_FLEXSPI_1PAD, 0x18),
+                    [4 * 8 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x52,
+                                           MG_RADDR_SDR, MG_FLEXSPI_1PAD, 0x18),
+                    [4 * 9 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x02,
+                                           MG_RADDR_SDR, MG_FLEXSPI_1PAD, 0x18),
+                    [4 * 9 + 1] =
+                        MG_FLEXSPI_LUT_SEQ(MG_WRITE_SDR, MG_FLEXSPI_1PAD, 0x00,
+                                           MG_STOP_EXE, MG_FLEXSPI_1PAD, 0x00),
+                    [4 * 11 + 0] =
+                        MG_FLEXSPI_LUT_SEQ(MG_CMD_SDR, MG_FLEXSPI_1PAD, 0x60,
+                                           MG_STOP_EXE, MG_FLEXSPI_1PAD, 0x00),
+                },
+        },
+    .pageSize = 0x100,
+    .sectorSize = 0x1000,
+    .ipcmdSerialClkFreq = 0,
+    .blockSize = 0x8000,
+};
+
+#define MG_FLEXSPI_NOR_INSTANCE 0
+#define MG_ROMAPI_ADDRESS 0x13030000U
+#define flexspi_nor                              \
+  ((struct mg_flexspi_nor_driver_interface *) (( \
+      (uint32_t *) MG_ROMAPI_ADDRESS)[5]))
+
+MG_IRAM static bool flash_page_start(volatile uint32_t *dst) {
+  char *base = (char *) s_mg_flash_frdm.start,
+       *end = base + s_mg_flash_frdm.size;
+  volatile char *p = (char *) dst;
+  return p >= base && p < end && ((p - base) % s_mg_flash_frdm.secsz) == 0;
+}
+
+MG_IRAM static int flexspi_nor_get_config(
+    struct mg_flexspi_nor_config *config) {
+  uint32_t option = 0xc0000004;
+  return flexspi_nor->get_config(MG_FLEXSPI_NOR_INSTANCE, config, &option);
+}
+
+MG_IRAM static int flash_init(void) {
+  static bool initialized = false;
+  if (!initialized) {
+    struct mg_flexspi_nor_config config;
+    memset(&config, 0, sizeof(config));
+    flexspi_nor->set_clock_source(0);
+    flexspi_nor->config_clock(MG_FLEXSPI_NOR_INSTANCE, 1, 0);
+    if (flexspi_nor->init(MG_FLEXSPI_NOR_INSTANCE, &default_config)) {
+      return 1;
+    }
+    flexspi_nor_get_config(&config);
+    if (flexspi_nor->init(MG_FLEXSPI_NOR_INSTANCE, &config)) {
+      return 1;
+    }
+    initialized = true;
+  }
+  return 0;
+}
+
+MG_IRAM static bool flash_erase(struct mg_flexspi_nor_config *config,
+                                void *addr) {
+  if (flash_page_start(addr) == false) {
+    MG_ERROR(("%p is not on a sector boundary", addr));
+    return false;
+  }
+
+  void *dst = (void *) ((char *) addr - (char *) s_mg_flash_frdm.start);
+  bool ok = (flexspi_nor->erase_sector(MG_FLEXSPI_NOR_INSTANCE, config,
+                                       (uint32_t) dst) == 0);
+  MG_INFO(("Sector starting at %p erasure: %s", addr, ok ? "ok" : "fail"));
+  return ok;
+}
+
+MG_IRAM bool mg_frdm_swap(void) {
+  return true;
+}
+
+MG_IRAM static void flash_wait(void) {
+  while ((*((volatile uint32_t *) (MG_FLEXSPI_BASE + 0xE0)) & MG_BIT(1)) == 0)
+    (void) 0;
+}
+
+static bool s_flash_irq_disabled;
+
+MG_IRAM static bool mg_frdm_write(void *addr, const void *buf, size_t len) {
+  struct mg_flexspi_nor_config config;
+  bool ok = false;
+  MG_ARM_DISABLE_IRQ();
+  if (flash_init() != 0) goto fwxit;
+  if (flexspi_nor_get_config(&config) != 0) goto fwxit;
+  if ((len % s_mg_flash_frdm.align) != 0) {
+    MG_ERROR(("%lu is not aligned to %lu", len, s_mg_flash_frdm.align));
+    goto fwxit;
+  }
+  if ((char *) addr < (char *) s_mg_flash_frdm.start) {
+    MG_ERROR(("Invalid flash write address: %p", addr));
+    goto fwxit;
+  }
+
+  uint32_t *dst = (uint32_t *) addr;
+  uint32_t *src = (uint32_t *) buf;
+  uint32_t *end = (uint32_t *) ((char *) buf + len);
+  ok = true;
+
+  while (ok && src < end) {
+    if (flash_page_start(dst) && flash_erase(&config, dst) == false) {
+      ok = false;
+      break;
+    }
+    uint32_t status;
+    uint32_t dst_ofs = (uint32_t) dst - (uint32_t) s_mg_flash_frdm.start;
+    if ((char *) buf >= (char *) s_mg_flash_frdm.start &&
+        (char *) buf <
+            (char *) (s_mg_flash_frdm.start + s_mg_flash_frdm.size)) {
+      // If we copy from FLASH to FLASH, then we first need to copy the source
+      // to RAM
+      size_t tmp_buf_size = s_mg_flash_frdm.align / sizeof(uint32_t);
+      uint32_t tmp[tmp_buf_size];
+
+      for (size_t i = 0; i < tmp_buf_size; i++) {
+        flash_wait();
+        tmp[i] = src[i];
+      }
+      status = flexspi_nor->page_program(MG_FLEXSPI_NOR_INSTANCE, &config,
+                                         (uint32_t) dst_ofs, tmp, false);
+    } else {
+      status = flexspi_nor->page_program(MG_FLEXSPI_NOR_INSTANCE, &config,
+                                         (uint32_t) dst_ofs, src, false);
+    }
+    src = (uint32_t *) ((char *) src + s_mg_flash_frdm.align);
+    dst = (uint32_t *) ((char *) dst + s_mg_flash_frdm.align);
+    if (status != 0) {
+      ok = false;
+    }
+  }
+  MG_INFO(("Flash write %lu bytes @ %p: %s.", len, dst, ok ? "ok" : "fail"));
+fwxit:
+  if (!s_flash_irq_disabled) MG_ARM_ENABLE_IRQ();
+  return ok;
+}
+
+// just overwrite instead of swap
+MG_IRAM static void single_bank_swap(char *p1, char *p2, size_t s, size_t ss) {
+  // no stdlib calls here
+  for (size_t ofs = 0; ofs < s; ofs += ss) {
+    mg_frdm_write(p1 + ofs, p2 + ofs, ss);
+  }
+  *(volatile unsigned long *) 0xe000ed0c = 0x5fa0004;
+}
+
+bool mg_ota_begin(size_t new_firmware_size) {
+  return mg_ota_flash_begin(new_firmware_size, &s_mg_flash_frdm);
+}
+
+bool mg_ota_write(const void *buf, size_t len) {
+  return mg_ota_flash_write(buf, len, &s_mg_flash_frdm);
+}
+
+bool mg_ota_end(void) {
+  if (mg_ota_flash_end(&s_mg_flash_frdm)) {
+    if (0) {  // is_dualbank()
+      // TODO(): no devices so far
+      *(volatile unsigned long *) 0xe000ed0c = 0x5fa0004;
+    } else {
+      // Swap partitions. Pray power does not go away
+      MG_INFO(("Swapping partitions, size %u (%u sectors)",
+               s_mg_flash_frdm.size,
+               s_mg_flash_frdm.size / s_mg_flash_frdm.secsz));
+      MG_INFO(("Do NOT power off..."));
+      mg_log_level = MG_LL_NONE;
+      s_flash_irq_disabled = true;
+      // Runs in RAM, will reset when finished
+      single_bank_swap(
+          (char *) s_mg_flash_frdm.start,
+          (char *) s_mg_flash_frdm.start + s_mg_flash_frdm.size / 2,
+          s_mg_flash_frdm.size / 2, s_mg_flash_frdm.secsz);
+    }
+  }
+  return false;
 }
 
 #endif
@@ -10999,7 +11392,9 @@ static int mg_tls_server_recv_hello(struct mg_connection *c) {
     mg_error(c, "not a client hello packet");
     return -1;
   }
+  if (rio->len < 50) goto fail;
   msgsz = MG_LOAD_BE16(rio->buf + 3);
+  if (((uint32_t) msgsz + 4) > rio->len) goto fail;
   mg_sha256_update(&tls->sha256, rio->buf + 5, msgsz);
   // store client random
   memmove(tls->random, rio->buf + 11, sizeof(tls->random));
@@ -11011,10 +11406,11 @@ static int mg_tls_server_recv_hello(struct mg_connection *c) {
     MG_INFO(("bad session id len"));
   }
   cipher_suites_len = MG_LOAD_BE16(rio->buf + 44 + session_id_len);
-  if (cipher_suites_len > (rio->len - 46 - session_id_len)) goto fail;
+  if (((uint32_t) cipher_suites_len + 46 + session_id_len) > rio->len)
+    goto fail;
   ext_len = MG_LOAD_BE16(rio->buf + 48 + session_id_len + cipher_suites_len);
   ext = rio->buf + 50 + session_id_len + cipher_suites_len;
-  if (ext_len > (rio->len - 50 - session_id_len - cipher_suites_len)) goto fail;
+  if (((unsigned char *) ext + ext_len) > (rio->buf + rio->len)) goto fail;
   for (j = 0; j < ext_len;) {
     uint16_t k;
     uint16_t key_exchange_len;
@@ -11026,12 +11422,12 @@ static int mg_tls_server_recv_hello(struct mg_connection *c) {
     }
     key_exchange_len = MG_LOAD_BE16(ext + j + 4);
     key_exchange = ext + j + 6;
-    if (key_exchange_len >
-        rio->len - (uint16_t) ((size_t) key_exchange - (size_t) rio->buf))
+    if (((size_t) key_exchange_len +
+         ((size_t) key_exchange - (size_t) rio->buf)) > rio->len)
       goto fail;
     for (k = 0; k < key_exchange_len;) {
       uint16_t m = MG_LOAD_BE16(key_exchange + k + 2);
-      if (m > (key_exchange_len - k - 4)) goto fail;
+      if (((uint32_t) m + k + 4) > key_exchange_len) goto fail;
       if (m == 32 && key_exchange[k] == 0x00 && key_exchange[k + 1] == 0x1d) {
         memmove(tls->x25519_cli, key_exchange + k + 4, m);
         mg_tls_drop_record(c);
@@ -19719,7 +20115,7 @@ static void mg_ws_cb(struct mg_connection *c, int ev, void *ev_data) {
       // Remove non-fragmented frame
       if (final && op) mg_iobuf_del(&c->recv, ofs, len);
       // Last chunk of the fragmented frame
-      if (final && !op) {
+      if (final && !op && (ofs > 0)) {
         m.flags = c->recv.buf[0];
         m.data = mg_str_n((char *) &c->recv.buf[1], (size_t) (ofs - 1));
         mg_call(c, MG_EV_WS_MSG, &m);

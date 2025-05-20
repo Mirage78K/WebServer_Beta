@@ -18,6 +18,9 @@ typedef enum
     //WS Spec
     WebsocketHandle_DataType_WsSpec,
 
+    //Date And Time
+    websocketHandle_DataType_DateTime,
+
     //Stream 1
     WebsocketHandle_DataType_St1TotalAndFlow,
     WebsocketHandle_DataType_St1Average,
