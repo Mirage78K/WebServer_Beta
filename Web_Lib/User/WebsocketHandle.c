@@ -31,6 +31,7 @@ typedef struct
     struct
     {
         uint8_t hashData_wsSepc[32];
+        uint8_t hashData_dateTime[32];
 
         //Stream 1
         uint8_t hashData_st1TotalAndFlowAndErrorAndOutCalc[32];
@@ -79,6 +80,7 @@ SHA256_CTX Sha256Ctx;
 
 /*Function Prototypes*/
 static void hashDataType_wsSpec(uint8_t *outputHash);
+static void hashDataType_DateTime(uint8_t *outputHash);
 static void hashDataType_stTotalAndFlow(uint8_t *outputHash, uint8_t streamNumAtZero);
 static void hashDataType_stAverage(uint8_t *outputHash, uint8_t streamNumAtZero);
 static void hashDataType_stTotalPrevious(uint8_t *outputHash, uint8_t streamNumAtZero);
@@ -239,6 +241,19 @@ int websocketHandle_checkNewData(struct mg_connection *c, WebsocketHandle_DataTy
         }
         break;
 
+
+    case websocketHandle_DataType_DateTime:
+        hashDataType_DateTime(newSha256);
+        if(memcmp(newSha256, WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_dateTime, sizeof(newSha256)) != 0)
+        {
+            outputRes = 1;
+            memcpy(WebsocketHandle.WebSocketClient[clientIndex].LastBuffer.hashData_dateTime, newSha256, sizeof(newSha256));
+        }
+        else
+        {
+            outputRes = 0;
+        }
+    	break;
 
     //Stream 1
     case WebsocketHandle_DataType_St1TotalAndFlow:
@@ -581,6 +596,16 @@ static void hashDataType_wsSpec(uint8_t *outputHash)    //check for all streams
     }
 
 	sha256_final(&Sha256Ctx, outputHash);
+}
+
+
+static void hashDataType_DateTime(uint8_t *outputHash)
+{
+    sha256_init(&Sha256Ctx);
+
+    sha256_update(&Sha256Ctx, (const uint8_t *)&gParamFromHmi.Data.ClockAndData, sizeof(gParamFromHmi.Data.ClockAndData));
+
+    sha256_final(&Sha256Ctx, outputHash);
 }
 
 

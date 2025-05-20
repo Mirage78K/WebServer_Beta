@@ -41,7 +41,7 @@ TaskHandle_t WebServer_TaskHandler;
 
 /*Local Variable*/
 static char jsonSendBuffer[4096];
-static char tempBuff[64];
+static char tempBuff[128];
 gWebServer_t gWebServer;
 
 
@@ -66,6 +66,7 @@ static void mylog(char ch, void *param);
 static inline int numconns(struct mg_mgr *mgr);
 
 static void setJson_wsSpecAndStreamStatus(char *buffer);
+static void setJson_dateTime(char *buffer);
 static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer);
 static void setJson_average(uint8_t streamNum, char *buffer);
 static void setJson_totalPrevious(uint8_t streamNum, char *buffer);
@@ -152,6 +153,13 @@ static void ws_1000(struct mg_connection *c)
 	if(websocketHandle_checkNewData(c, WebsocketHandle_DataType_WsSpec) == 1)
 	{
 		setJson_wsSpecAndStreamStatus(jsonSendBuffer);
+		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
+	}
+
+
+	if(websocketHandle_checkNewData(c, websocketHandle_DataType_DateTime) == 1)
+	{
+		setJson_dateTime(jsonSendBuffer);
 		mg_ws_send(c, jsonSendBuffer, strlen(jsonSendBuffer), WEBSOCKET_OP_TEXT);
 	}
 
@@ -738,6 +746,33 @@ static void setJson_wsSpecAndStreamStatus(char *buffer)
 	//End
 	strcat(buffer,"}");
 }
+
+
+//Date And Time
+static void setJson_dateTime(char *buffer)
+{
+	//Start
+	sprintf(buffer,"{");
+
+
+	sprintf(tempBuff, "\"flcDateTime\":\"%04d-%02d-%02d     %02d:%02d:%02d\",", gParamFromHmi.Data.ClockAndData.year, gParamFromHmi.Data.ClockAndData.month,
+				gParamFromHmi.Data.ClockAndData.day, gParamFromHmi.Data.ClockAndData.hour, gParamFromHmi.Data.ClockAndData.minute,
+					gParamFromHmi.Data.ClockAndData.second);
+
+	strcat(buffer, tempBuff);
+
+
+	//Remove Last , in json
+	size_t jsonSize = strlen(buffer);
+	if(jsonSize > 1)
+	{
+		buffer[jsonSize-1] = '\0';
+	}
+
+	//End
+	strcat(buffer,"}");
+}
+
 
 //Data stream Total and flow
 static void setJson_totalAndFlowAndInputSignalAndOutputcalcAndTotalErrorAndFlowError(uint8_t streamNum, char *buffer)	//streamNum at one
